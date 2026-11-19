@@ -1,0 +1,95 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Google Sans', 'Inter', system-ui, sans-serif;
+  color: #f8fbff;
+  background: #07101c;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; background: #07101c; }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+
+@layer components {
+  .google-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.1em;
+    background: conic-gradient(from 225deg, #4285f4 0 25%, #34a853 25% 42%, #fbbc05 42% 65%, #ea4335 65% 82%, #4285f4 82%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .google-mark.small { width: 32px; height: 32px; font-size: 27px; }
+  .hero { min-height: 700px; background: #07101c; }
+  .hero-gradient { background: linear-gradient(90deg, #9c81ff 0%, #ff4a68 35%, #ff9b1b 63%, #c7e335 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .primary-button { background: #4285f4; color: white; box-shadow: 0 10px 28px rgba(66, 133, 244, .28); transition: transform .2s ease, background .2s ease, box-shadow .2s ease; }
+  .primary-button:hover { background: #5b96f5; box-shadow: 0 14px 32px rgba(66, 133, 244, .4); transform: translateY(-2px); }
+  .secondary-button { border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); color: white; transition: .2s ease; }
+  .secondary-button:hover, .secondary-button.is-active { border-color: rgba(66,133,244,.8); background: rgba(66,133,244,.16); }
+  .detail-link { transition: color .2s ease; }
+  .detail-link:hover { color: white; }
+  .content-section { padding-top: 4.5rem; }
+  .section-heading { margin-bottom: 1.75rem; }
+  .section-marker { width: 4px; height: 30px; border-radius: 999px; background: linear-gradient(#4285f4, #34a853); }
+  .scroll-button { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: rgba(255,255,255,.06); color: #cbd5e1; transition: .2s ease; }
+  .scroll-button:hover { background: #4285f4; color: white; }
+  .media-card { background: linear-gradient(145deg, #202d46, #172236); border: 1px solid rgba(148,163,184,.25); box-shadow: 0 16px 32px rgba(0,0,0,.18); transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease; }
+  .media-card:hover { transform: translateY(-7px); border-color: rgba(66,133,244,.75); box-shadow: 0 22px 48px rgba(0,0,0,.35); }
+  .media-poster { height: 360px; background: #19263b; }
+  .media-copy { min-height: 210px; }
+  .badge-0 { background: #4285f4; } .badge-1 { background: #22a559; } .badge-2 { background: #ef4444; } .badge-3 { background: #eaa900; }
+  .rank-badge { border-radius: 8px; background: rgba(7,16,28,.75); padding: 6px 9px; font-size: 12px; font-weight: 800; color: white; backdrop-filter: blur(8px); }
+  .feature-card { min-height: 230px; border-radius: 26px; border: 1px solid; padding: 30px; transition: transform .25s ease, box-shadow .25s ease; }
+  .feature-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,.2); }
+  .feature-blue { border-color: rgba(66,133,244,.55); background: linear-gradient(145deg, #25324d, #202b42); }
+  .feature-red { border-color: rgba(234,67,53,.55); background: linear-gradient(145deg, #302d42, #252b3d); }
+  .feature-green { border-color: rgba(52,168,83,.55); background: linear-gradient(145deg, #263540, #202b40); }
+  .feature-icon { display: inline-flex; width: 58px; height: 58px; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,.12); border-radius: 18px; background: rgba(255,255,255,.06); color: #4285f4; }
+  .global-section { background: radial-gradient(circle at 75% 25%, rgba(66,133,244,.16), transparent 34%), #0c1728; }
+  .live-card { background: linear-gradient(120deg, rgba(66,133,244,.2), rgba(52,168,83,.12)), #18253a; border: 1px solid rgba(66,133,244,.35); }
+  .price-card { border: 1px solid rgba(148,163,184,.22); background: #172236; }
+  .price-card.popular { border-color: #4285f4; box-shadow: 0 20px 50px rgba(66,133,244,.16); }
+  .modal-backdrop { background: rgba(3,8,16,.82); backdrop-filter: blur(14px); }
+  .modal-panel, .auth-panel { border: 1px solid rgba(148,163,184,.2); background: #101827; box-shadow: 0 28px 80px rgba(0,0,0,.5); }
+  .form-input { width: 100%; border: 1px solid rgba(148,163,184,.24); border-radius: 12px; background: rgba(255,255,255,.06); padding: 12px 14px; color: white; outline: none; transition: .2s ease; }
+  .form-input::placeholder { color: #64748b; }
+  .form-input:focus { border-color: #4285f4; box-shadow: 0 0 0 3px rgba(66,133,244,.15); }
+  select.form-input option { color: #0f172a; }
+  .withdrawal-input { width: 100%; border-radius: 16px; background: #0b0f16; padding: 16px; color: #f8fbff; outline: none; transition: box-shadow .2s ease, border-color .2s ease; }
+  .withdrawal-input::placeholder { color: #334155; }
+  .withdrawal-input:focus { box-shadow: 0 0 0 3px rgba(66,133,244,.2); }
+  select.withdrawal-input option { color: #0f172a; }
+}
+
+@media (max-width: 640px) {
+  .site-header .google-mark { width: 30px; height: 30px; font-size: 25px; }
+  .site-header .brand-name { font-size: 1rem; }
+  .site-header .header-auth { font-size: .72rem; }
+  .hero { min-height: 650px; }
+  .hero-title { font-size: 3.5rem !important; }
+  .media-poster { height: 320px; }
+  .media-copy { min-height: 205px; }
+  .feature-card { min-height: 210px; padding: 25px; }
+  .content-section { padding-top: 3.5rem; }
+  .section-heading { margin-bottom: 1.25rem; }
+}
+
+@media (max-width: 390px) {
+  .site-header .brand-name { font-size: .9rem; }
+  .site-header .header-auth { font-size: .66rem; }
+  .site-header nav { padding-left: .5rem; padding-right: .5rem; }
+}
