@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Home, Loader2, LogOut, Play, RotateCcw, ShieldCheck, UserRound, Video, XCircle } from 'lucide-react';
+import { Home, CheckCircle2, Clock3, Loader2, LogOut, Play, RotateCcw, ShieldCheck, UserRound, Video, XCircle } from 'lucide-react';
 import VideoTab from '@/components/VideoTab';
 import { recommended } from '@/data/content';
 import { countries, getCountry, getPaymentMethods, getPlanRewardAmount } from '@/data/locations';
@@ -102,9 +102,10 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
   const [codeStep, setCodeStep] = useState(false);
   const [codeReady, setCodeReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [validating, setValidating] = useState(false);
   const [certificationBlocked, setCertificationBlocked] = useState(false);
+  const [latestRequest, setLatestRequest] = useState<{ status: string; amount: number } | null>(null);
+  const [dismissedLatest, setDismissedLatest] = useState(false);
   const [committedAmount, setCommittedAmount] = useState(0);
   const [balanceReady, setBalanceReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -116,18 +117,20 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
 
   useEffect(() => {
     let mounted = true;
-    void supabase.from('withdrawal_requests').select('amount').eq('user_id', profile.id).in('status', ['pending', 'approved']).then(({ data, error }) => {
+    void supabase.from('withdrawal_requests').select('amount, status, created_at').eq('user_id', profile.id).order('created_at', { ascending: false }).then(({ data, error }) => {
       if (!mounted) return;
       if (error) {
         setBalanceReady(false);
         setErrorMessage('Le solde disponible ne peut pas être vérifié pour le moment.');
         return;
       }
-      setCommittedAmount((data ?? []).reduce((total, row) => total + Number(row.amount), 0));
+      const rows = data ?? [];
+      setCommittedAmount(rows.filter((row) => row.status === 'pending' || row.status === 'approved').reduce((total, row) => total + Number(row.amount), 0));
+      setLatestRequest(rows.length > 0 ? { status: String(rows[0].status), amount: Number(rows[0].amount) } : null);
       setBalanceReady(true);
     });
     return () => { mounted = false; };
-  }, [profile.id]);
+  }, [profile.id, dismissedLatest]);
 
   useEffect(() => {
     if (!codeStep) return undefined;
@@ -155,6 +158,8 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
     setValidating(false);
     setSubmitting(false);
     if (error) {
+      setValidating(false);
+      setSubmitting(false);
       if (error.message.includes('certification')) { setCertificationBlocked(true); return; }
       if (error.message.includes('payment code')) setErrorMessage('Le code de retrait est incorrect. Vérifiez-le puis réessayez.');
       else if (error.message.includes('already pending')) setErrorMessage('Une demande de retrait est déjà en attente. Elle doit être traitée avant une nouvelle demande.');
@@ -163,14 +168,24 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
       else setErrorMessage('Votre demande n’a pas pu être envoyée. Veuillez vérifier les informations puis réessayer.');
       return;
     }
-    setSubmitted(true);
+    setAmount('');
+    setWithdrawalCode('');
+    setCodeStep(false);
+    setDismissedLatest(false);
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 1500));
+    setValidating(false);
+    setSubmitting(false);
   };
 
   if (certificationBlocked) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-red-400/30 bg-[#241318] p-8 text-center shadow-2xl sm:p-12"><XCircle className="mx-auto h-12 w-12 text-red-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez certifier votre compte</h1><p className="mt-4 leading-7 text-slate-300">Votre demande de retrait a été refusée car votre compte n’est pas encore certifié. Aucun montant n’a quitté votre compte : votre solde reste intégralement disponible.</p><p className="mt-3 text-sm text-slate-400">Contactez l’administrateur pour faire certifier votre compte, puis relancez votre retrait.</p><button onClick={() => { setCertificationBlocked(false); setCodeStep(false); }} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Retour</button></div></section>;
 
   if (validating) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre compte est en cours de validation</h1><p className="mt-4 leading-7 text-slate-400">Traitement de votre demande de retrait…</p></div></section>;
 
-  if (submitted) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre demande de retrait est en cours de vérification</h1><p className="mt-4 leading-7 text-slate-400">Votre compte reste inchangé : aucun versement n’est exécuté avant la décision de l’administrateur.</p></div></section>;
+  if (latestRequest && !dismissedLatest && latestRequest.status === 'pending') return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 text-center shadow-2xl sm:p-12"><Clock3 className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">L’administrateur doit approuver votre retrait</h1><p className="mt-4 leading-7 text-slate-300">Votre demande de {latestRequest.amount.toLocaleString('fr-FR')} FCFA attend la validation de l’administrateur.</p><p className="mt-3 text-sm text-slate-400">Tant que l’administrateur n’a pas validé, votre argent reste dans votre compte.</p></div></section>;
+
+  if (latestRequest && !dismissedLatest && latestRequest.status === 'rejected') return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-red-400/30 bg-[#241318] p-8 text-center shadow-2xl sm:p-12"><XCircle className="mx-auto h-12 w-12 text-red-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre retrait a échoué</h1><p className="mt-4 leading-7 text-slate-300">L’administrateur n’a pas validé votre demande de {latestRequest.amount.toLocaleString('fr-FR')} FCFA.</p><p className="mt-3 text-sm text-slate-400">Aucun montant n’a quitté votre compte : votre solde reste disponible pour une nouvelle demande.</p><button onClick={() => setDismissedLatest(true)} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Faire une nouvelle demande</button></div></section>;
+
+  if (latestRequest && !dismissedLatest && latestRequest.status === 'approved') return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-green-400/30 bg-[#12241a] p-8 text-center shadow-2xl sm:p-12"><CheckCircle2 className="mx-auto h-12 w-12 text-green-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre retrait a été approuvé</h1><p className="mt-4 leading-7 text-slate-300">L’administrateur a validé votre demande de {latestRequest.amount.toLocaleString('fr-FR')} FCFA.</p><button onClick={() => setDismissedLatest(true)} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Retour au retrait</button></div></section>;
 
   const numericAmount = Number(amount);
   const canSubmit = balanceReady && !submitting && paymentMethod !== '' && withdrawalCountry !== '' && phone.trim() !== '' && numericAmount > 0 && numericAmount <= availableBalance;
