@@ -7,12 +7,11 @@ type ActivityKey = 'watched' | 'liked' | 'disliked' | 'favorited';
 
 interface VideoTabProps {
   activities: Record<string, Activity>;
-  rewardAmount: number;
   onActivity: (contentId: string, key: ActivityKey) => Promise<void>;
   onWatched: (contentId: string) => Promise<void>;
 }
 
-export default function VideoTab({ activities, rewardAmount, onActivity, onWatched }: VideoTabProps) {
+export default function VideoTab({ activities, onActivity, onWatched }: VideoTabProps) {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -38,17 +37,16 @@ export default function VideoTab({ activities, rewardAmount, onActivity, onWatch
   return <section className="pb-10 pt-8 sm:pt-12">
     <div className="rounded-[28px] border border-white/10 bg-[#111923] p-5 shadow-2xl sm:p-8">
       <h1 className="text-3xl font-black text-white sm:text-5xl">Vidéos</h1>
-      <p className="mt-3 text-lg text-slate-400">{videos.length} vidéos disponibles</p>
-      <p className="mt-2 text-sm font-bold text-green-400">Chaque vidéo : {rewardAmount.toLocaleString('fr-FR')} FCFA</p>
+      <p className="mt-3 text-lg text-slate-400">{videos.length} vidéo{videos.length > 1 ? 's' : ''} disponible{videos.length > 1 ? 's' : ''}</p>
     </div>
     <div className="mt-7 grid gap-5 lg:grid-cols-2">
-      {videos.map((video) => <VideoCard key={video.id} video={video} rewardAmount={rewardAmount} isPlaying={playingId === video.id} onPlay={() => { setPlayingId(video.id); void onWatched(video.id); }} activity={activities[video.id]} onActivity={onActivity} />)}
+      {videos.map((video) => <VideoCard key={video.id} video={video} isPlaying={playingId === video.id} onPlay={() => { setPlayingId(video.id); void onWatched(video.id); }} activity={activities[video.id]} onActivity={onActivity} />)}
     </div>
     {videos.length === 0 && <div className="mt-8 rounded-3xl border border-dashed border-white/15 p-12 text-center text-slate-400">Aucune vidéo disponible.</div>}
   </section>;
 }
 
-function VideoCard({ video, rewardAmount, isPlaying, onPlay, activity, onActivity }: { video: VideoItem; rewardAmount: number; isPlaying: boolean; onPlay: () => void; activity?: Activity; onActivity: (contentId: string, key: ActivityKey) => Promise<void> }) {
+function VideoCard({ video, isPlaying, onPlay, activity, onActivity }: { video: VideoItem; isPlaying: boolean; onPlay: () => void; activity?: Activity; onActivity: (contentId: string, key: ActivityKey) => Promise<void> }) {
   const watched = Boolean(activity?.watched);
   const liked = Boolean(activity?.liked);
   const disliked = Boolean(activity?.disliked);
@@ -68,7 +66,6 @@ function VideoCard({ video, rewardAmount, isPlaying, onPlay, activity, onActivit
         </button>}
     <div className="p-5 sm:p-6">
       <h2 className="line-clamp-2 text-lg font-bold leading-tight text-white sm:text-xl">{video.title}</h2>
-      <p className="mt-4 text-lg font-black text-green-400">{rewardAmount.toLocaleString('fr-FR')} FCFA</p>
       <div className="mt-5 grid grid-cols-4 gap-2">
         <VideoAction active={liked} activeClass="border-red-500/70 bg-red-500/10 text-red-400" label="J’aime" onClick={() => void onActivity(video.id, 'liked')}><ThumbsUp className="h-5 w-5" /></VideoAction>
         <VideoAction active={disliked} activeClass="border-slate-400/70 bg-slate-400/10 text-slate-200" label="Je n’aime pas" onClick={() => void onActivity(video.id, 'disliked')}><ThumbsDown className="h-5 w-5" /></VideoAction>
