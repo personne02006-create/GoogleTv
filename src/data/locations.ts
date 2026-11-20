@@ -83,13 +83,17 @@ export const countries: CountryInfo[] = [
 ];
 
 export const plans = [
-  { name: 'Standard', fcfa: 7500, euro: 11.43, gbp: 9.85, chf: 10.75 },
-  { name: 'Premium', fcfa: 12500, euro: 19.05, gbp: 16.40, chf: 17.90 },
-  { name: 'MasterClass', fcfa: 15000, euro: 22.86, gbp: 19.70, chf: 21.45 },
+  { name: 'Standard', fcfa: 7500, euro: 11.43, gbp: 9.85, chf: 10.75, withdrawalLimit: 2500000 },
+  { name: 'Premium', fcfa: 12500, euro: 19.05, gbp: 16.40, chf: 17.90, withdrawalLimit: 500000 },
+  { name: 'MasterClass', fcfa: 15000, euro: 22.86, gbp: 19.70, chf: 21.45, withdrawalLimit: 10000000 },
 ];
 
 export function getPlanRewardAmount(planName: string | null | undefined) {
   return plans.find((plan) => plan.name === planName?.trim())?.fcfa ?? plans[0].fcfa;
+}
+
+export function getPlanWithdrawalLimit(planName: string | null | undefined) {
+  return plans.find((plan) => plan.name === planName?.trim())?.withdrawalLimit ?? plans[0].withdrawalLimit;
 }
 
 export const paymentMethodsByCountry: Record<string, string[]> = {

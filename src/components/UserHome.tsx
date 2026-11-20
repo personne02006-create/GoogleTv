@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Home, CheckCircle2, Clock3, Loader2, LogOut, Play, RotateCcw, ShieldCheck, UserRound, Video, XCircle } from 'lucide-react';
 import VideoTab from '@/components/VideoTab';
 import { recommended } from '@/data/content';
-import { countries, getCountry, getPaymentMethods, getPlanRewardAmount } from '@/data/locations';
+import { countries, getCountry, getPaymentMethods, getPlanRewardAmount, getPlanWithdrawalLimit } from '@/data/locations';
 import { supabase } from '@/lib/supabase';
 
 interface UserHomeProfile {
@@ -35,8 +35,10 @@ export default function UserHome({ profile, onSignOut }: UserHomeProps) {
   const [tab, setTab] = useState<UserTab>('home');
   const [activities, setActivities] = useState<Record<string, Activity>>({});
   const [activityError, setActivityError] = useState<string | null>(null);
+  const [committedAmount, setCommittedAmount] = useState(0);
   const firstName = profile.first_name || 'vous';
   const rewardAmount = getPlanRewardAmount(profile.account_type);
+  const withdrawalLimit = getPlanWithdrawalLimit(profile.account_type);
 
   useEffect(() => {
     let mounted = true;
@@ -49,6 +51,15 @@ export default function UserHome({ profile, onSignOut }: UserHomeProps) {
     });
     return () => { mounted = false; };
   }, [profile.id]);
+
+  useEffect(() => {
+    let mounted = true;
+    void supabase.from('withdrawal_requests').select('amount, status').eq('user_id', profile.id).in('status', ['pending', 'approved']).then(({ data, error }) => {
+      if (!mounted) return;
+      if (!error) setCommittedAmount((data ?? []).reduce((total, row) => total + Number(row.amount), 0));
+    });
+    return () => { mounted = false; };
+  }, [profile.id, activities]);
 
   const updateActivity = async (contentId: string, key: ActivityKey, forcedValue?: boolean) => {
     const current = activities[contentId] ?? { watched: false, liked: false, disliked: false, favorited: false };
@@ -76,11 +87,17 @@ export default function UserHome({ profile, onSignOut }: UserHomeProps) {
     rewarded: result.rewarded + Number(activity.watched && activity.liked && activity.favorited),
   }), { watched: 0, liked: 0, favorited: 0, rewarded: 0 }), [activities]);
 
+  const earnedBalance = counts.rewarded * rewardAmount;
+  const availableBalance = Math.max(0, earnedBalance - committedAmount);
+  const withdrawalRequired = availableBalance >= withdrawalLimit;
+
   return <div className="user-home min-h-screen bg-[#090d14] pb-24 text-slate-100">
     <header className="border-b border-white/10 bg-[#0b0f17] px-5 py-5 sm:px-10"><div className="mx-auto flex max-w-6xl items-center justify-between"><div className="flex items-center gap-2"><span className="google-mark">G</span><span className="text-2xl font-bold tracking-tight text-white">Google</span><span className="rounded-lg bg-[#4285f4] px-2.5 py-1 text-lg font-bold text-white shadow-[0_0_20px_rgba(66,133,244,.4)]">TV</span></div><button onClick={onSignOut} className="inline-flex items-center gap-2 rounded-xl bg-[#171c25] px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-[#222936] hover:text-white sm:px-6"><LogOut className="h-4 w-4" /> Déconnexion</button></div></header>
     <main className="mx-auto max-w-6xl px-5 sm:px-10">
       {tab === 'home' && <HomeTab firstName={firstName} isCertified={profile.is_certified} />}
-      {tab === 'video' && <VideoTab activities={activities} onActivity={updateActivity} onWatched={markWatched} />}
+      {tab === 'video' && (withdrawalRequired
+        ? <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 text-center shadow-2xl sm:p-12"><RotateCcw className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Retrait obligatoire avant de continuer</h1><p className="mt-4 leading-7 text-slate-300">Votre solde disponible de {availableBalance.toLocaleString('fr-FR')} FCFA a atteint la limite de {withdrawalLimit.toLocaleString('fr-FR')} FCFA de votre type de compte.</p><p className="mt-3 text-sm text-slate-400">Vous devez effectuer un retrait avant de pouvoir continuer à regarder des vidéos.</p><button onClick={() => setTab('withdrawal')} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Aller au retrait</button></div></section>
+        : <VideoTab activities={activities} onActivity={updateActivity} onWatched={markWatched} />)}
       {tab === 'withdrawal' && <WithdrawalTab profile={profile} counts={counts} rewardAmount={rewardAmount} />}
       {tab === 'profile' && <ProfileTab profile={profile} />}
       {activityError && <p className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-red-400/30 bg-[#2a1720] px-4 py-3 text-sm text-red-200 shadow-xl">{activityError}</p>}
