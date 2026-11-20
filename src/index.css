@@ -1,8 +1,33 @@
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  --default-ring-color: color-mix(in oklab, var(--color-blue-500, #3b82f6) 50%, transparent);
+}
+
+/*
+  Tailwind 4 changed a few defaults. These keep the site looking as it did on Tailwind 3:
+  the default border colour, the placeholder colour and the pointer cursor on buttons.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400, #9ca3af);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
 
 :root {
   font-family: 'Google Sans', 'Inter', system-ui, sans-serif;
