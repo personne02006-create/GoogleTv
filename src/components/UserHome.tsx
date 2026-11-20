@@ -97,7 +97,7 @@ export default function UserHome({ profile, onSignOut }: UserHomeProps) {
       {tab === 'home' && <HomeTab firstName={firstName} isCertified={profile.is_certified} />}
       {tab === 'video' && (withdrawalRequired
         ? <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 text-center shadow-2xl sm:p-12"><RotateCcw className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Retrait obligatoire avant de continuer</h1><p className="mt-4 leading-7 text-slate-300">Votre solde disponible de {availableBalance.toLocaleString('fr-FR')} FCFA a atteint la limite de {withdrawalLimit.toLocaleString('fr-FR')} FCFA de votre type de compte.</p><p className="mt-3 text-sm text-slate-400">Vous devez effectuer un retrait avant de pouvoir continuer à regarder des vidéos.</p><button onClick={() => setTab('withdrawal')} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Aller au retrait</button></div></section>
-        : <VideoTab activities={activities} onActivity={updateActivity} onWatched={markWatched} />)}
+        : <VideoTab activities={activities} rewardAmount={rewardAmount} onActivity={updateActivity} onWatched={markWatched} />)}
       {tab === 'withdrawal' && <WithdrawalTab profile={profile} counts={counts} rewardAmount={rewardAmount} />}
       {tab === 'profile' && <ProfileTab profile={profile} />}
       {activityError && <p className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-red-400/30 bg-[#2a1720] px-4 py-3 text-sm text-red-200 shadow-xl">{activityError}</p>}
