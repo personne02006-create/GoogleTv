@@ -247,7 +247,7 @@ function ProfileResult({ profile, working, onApprove, onReject, onCertificationC
       <div><p className="text-xs uppercase tracking-wider text-slate-500">Prénom et nom</p><p className="mt-1 text-lg font-bold text-white">{profile.first_name} {profile.last_name}</p>{profile.is_certified && <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-blue-400/15 px-2.5 py-1 text-xs font-bold text-blue-200"><ShieldCheck className="h-3.5 w-3.5" /> Certifié</p>}</div>
       <div><p className="text-xs uppercase tracking-wider text-slate-500">Numéro d’identification</p><p className="mt-1 font-bold text-blue-300">{identifierFor(profile.id)}</p></div>
       <div><p className="text-xs uppercase tracking-wider text-slate-500">Statut du compte</p><p className={`mt-1 font-bold ${profile.approval_status === 'approved' ? 'text-green-300' : 'text-amber-300'}`}>{statusLabel}</p></div>
-      <div><p className="text-xs uppercase tracking-wider text-slate-500">Adresse mail</p><p className="mt-1 text-slate-200">{profile.email ?? '—'}</p></div>
+      <div><p className="text-xs uppercase tracking-wider text-slate-500">Adresse e-mail</p><p className="mt-1 text-slate-200">{profile.email ?? '—'}</p></div>
       <div><p className="text-xs uppercase tracking-wider text-slate-500">Téléphone</p><p className="mt-1 text-slate-200">{profile.phone ?? '—'}</p></div>
       <div><p className="text-xs uppercase tracking-wider text-slate-500">Pays et ville</p><p className="mt-1 text-slate-200">{profile.country ?? '—'} · {profile.city ?? '—'}</p></div>
       <div><p className="text-xs uppercase tracking-wider text-slate-500">Formule</p><p className="mt-1 text-slate-200">{profile.account_type ?? '—'}</p></div>
