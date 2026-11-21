@@ -67,7 +67,7 @@ function VideoCard({ video, rewardAmount, isPlaying, onPlay, activity, onActivit
         </button>}
     <div className="p-5 sm:p-6">
       <h2 className="line-clamp-2 text-lg font-bold leading-tight text-white sm:text-xl">{video.title}</h2>
-      <p className="mt-4 text-lg font-black text-green-400">{rewardAmount.toLocaleString('fr-FR')} FCFA</p>
+      <p className="mt-4 text-lg font-black text-green-400">{rewardAmount.toLocaleString('fr-FR')} XOF</p>
       <div className="mt-5 grid grid-cols-4 gap-2">
         <VideoAction active={liked} activeClass="border-red-500/70 bg-red-500/10 text-red-400" label="J’aime" onClick={() => void onActivity(video.id, 'liked')}><ThumbsUp className="h-5 w-5" /></VideoAction>
         <VideoAction active={disliked} activeClass="border-slate-400/70 bg-slate-400/10 text-slate-200" label="Je n’aime pas" onClick={() => void onActivity(video.id, 'disliked')}><ThumbsDown className="h-5 w-5" /></VideoAction>

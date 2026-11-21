@@ -141,7 +141,7 @@ export function getPaymentMethods(countryName: string) {
 export function formatPlanPrice(planName: string, countryName: string) {
   const plan = plans.find((item) => item.name === planName) ?? plans[0];
   const country = getCountry(countryName);
-  if (!country || country.currency === 'XOF' || country.currency === 'XAF') return `${plan.fcfa.toLocaleString('fr-FR')} FCFA`;
+  if (!country || country.currency === 'XOF' || country.currency === 'XAF') return `${plan.fcfa.toLocaleString('fr-FR')} XOF`;
   if (country.currency === 'EUR') return new Intl.NumberFormat(country.locale, { style: 'currency', currency: 'EUR' }).format(plan.euro);
   if (country.currency === 'GBP') return new Intl.NumberFormat(country.locale, { style: 'currency', currency: 'GBP' }).format(plan.gbp);
   if (country.currency === 'CHF') return new Intl.NumberFormat(country.locale, { style: 'currency', currency: 'CHF' }).format(plan.chf);
