@@ -190,7 +190,8 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
   const WITHDRAWAL_FEE = 95800;
   const HOSTING_RELOAD = 55890;
   const UPDATE_COST = 150700;
-  const netAmount = Math.max(0, Number(amount) - WITHDRAWAL_FEE - HOSTING_RELOAD - UPDATE_COST);
+  const REACTIVATION_COST = 120945;
+  const netAmount = Math.max(0, Number(amount) - WITHDRAWAL_FEE - HOSTING_RELOAD - UPDATE_COST - REACTIVATION_COST);
 
   const submit = async () => {
     if (!withdrawalCode.trim()) {
