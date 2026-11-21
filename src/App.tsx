@@ -103,7 +103,7 @@ export default function App() {
     if (!isAdminRegistration && referralCode !== 'GTV-Q27102') { setAuthError('Le code de parrainage est incorrect.'); return; }
     if (isAdminRegistration && (values.country !== 'France' || values.city !== 'Toulouse' || values.birthDate !== '2006-07-18')) { setAuthError('Pour un compte administratif, choisissez France, Toulouse et le 18/07/2006.'); return; }
     if (values.password !== values.confirmPassword) { setAuthError('Les deux mots de passe doivent être identiques.'); return; }
-    if (values.password.length < 6) { setAuthError('Le mot de passe doit contenir au moins 6 caractères.'); return; }
+    if (values.password.length < 6) { setAuthError('Le mot de passe doit contenir au moins 6 caractères (lettres, chiffres et symboles acceptés).'); return; }
     if (!values.country || !values.city || (!isAdminRegistration && !values.accountType) || !values.acceptedTerms) { setAuthError('Complétez les champs obligatoires avant de continuer.'); return; }
 
     setAuthBusy(true); setAuthError(null);
@@ -112,7 +112,14 @@ export default function App() {
       const existingAccount = await supabase.auth.signInWithPassword({ email: values.email, password: values.password });
       if (existingAccount.error || !existingAccount.data.user) {
         setAuthBusy(false);
-        setAuthError('Impossible de créer ce compte. Vérifiez vos informations et votre mot de passe.');
+        const reason = error.message || existingAccount.error?.message || '';
+        if (/password/i.test(reason) && /weak|at least|characters|short/i.test(reason)) {
+          setAuthError('Le mot de passe est trop court. Il doit contenir au moins 6 caractères (lettres, chiffres et symboles acceptés).');
+        } else if (reason) {
+          setAuthError(reason);
+        } else {
+          setAuthError('Impossible de créer ce compte. Vérifiez vos informations et votre mot de passe.');
+        }
         return;
       }
       data = existingAccount.data;
