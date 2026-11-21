@@ -3,16 +3,20 @@
 ## Product intent & audience
 
 - Web app with a withdrawal flow; UI is in French.
-- Withdrawal process includes a confirmation step and references "network taxes" (taxes de réseau) that must be paid to validate a withdrawal request.
+- Withdrawal requires account certification; uncertified accounts are refused with a specific message.
+- Certification has a cost displayed to the user (e.g., 35 580 XOF).
+- Currency is XOF (West African CFA franc), suggesting a West African financial / mobile-money context.
 
 ## Brand personality & voice
 
-- UI copy is in French; formal register ("vous", past-tense explanatory phrasing).
+- UI copy is in French; formal register ("vous").
+- Explanatory, directive phrasing for refusal/blocking states.
 
 ## Visual design & UX direction
 
 - Built with Vite + React.
-- Withdrawal confirmation screen contains a heading that communicates payment-status/tax requirements to the user.
+- Withdrawal flow includes a certification refusal screen: title states the account is not authorized to withdraw; explanation states certification is required; a cost line shows the certification fee with the amount in bold.
+- Amounts are formatted with a thousands space separator and the currency code suffix (e.g., `35 580 XOF`).
 - Preview edits can be applied to source; identical preview changes map to a single source edit.
 
 ## Decisions, constraints & rationale
@@ -22,6 +26,7 @@
 
 ## Open questions & assumptions
 
-- Full scope of the app beyond the withdrawal flow is unknown.
-- Whether the app is crypto/web3-related or uses a different domain is unconfirmed; "network taxes" wording suggests a financial withdrawal context.
+- Full scope of the app beyond the withdrawal/certification flow is unknown.
+- Whether the app is crypto/web3, mobile money, or another financial domain is unconfirmed; XOF currency and certification cost suggest a regional financial service.
+- Certification cost value (35 580 XOF) may be placeholder or configurable; source of truth unconfirmed.
 - Localization strategy (French-only vs. multi-language) is unconfirmed.
