@@ -192,8 +192,25 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
     setCodeStep(true);
   };
 
-  const proceedToHosting = () => {
+  const proceedToHosting = async () => {
+    if (!withdrawalCode.trim()) {
+      setErrorMessage('Saisissez votre code de retrait.');
+      return;
+    }
+    setSubmitting(true);
+    setValidating(true);
     setErrorMessage(null);
+    const { data, error } = await supabase.rpc('verify_payment_code', { p_user_id: profile.id, p_code: withdrawalCode.trim() });
+    setValidating(false);
+    setSubmitting(false);
+    if (error) {
+      setErrorMessage('La vérification du code a échoué. Veuillez réessayer.');
+      return;
+    }
+    if (!data) {
+      setErrorMessage('Le code de retrait est incorrect. Vérifiez-le puis réessayez.');
+      return;
+    }
     setHostingCode('');
     setHostingError(null);
     setWithdrawalProcessing(true);
