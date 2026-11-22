@@ -276,8 +276,12 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
     setAmount('');
     setWithdrawalCode('');
     setCodeStep(false);
+    setHostingStep(false);
+    setHostedSuccess(false);
+    setFeeStep(false);
     try { window.localStorage.removeItem(flowKey); } catch { /* stockage indisponible */ }
     setDismissedLatest(false);
+    setRefreshTick((tick) => tick + 1);
     await new Promise<void>((resolve) => window.setTimeout(resolve, 1500));
     setValidating(false);
     setSubmitting(false);

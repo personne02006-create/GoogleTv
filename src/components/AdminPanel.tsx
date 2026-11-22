@@ -174,7 +174,7 @@ function WithdrawalReviewSection() {
     setWorkingId(null);
     if (reviewError) { setError('La demande n’a pas pu être traitée.'); return; }
     setRequest(null);
-    setMessage(status === 'approved' ? 'La demande de retrait a été approuvée.' : 'La demande de retrait a été refusée.');
+    setMessage(status === 'approved' ? 'Le retrait a été accepté.' : 'Le retrait a été refusé.');
   };
 
   return <section className="mt-12 rounded-2xl border border-white/10 bg-[#172236] p-5 sm:p-7">
@@ -189,8 +189,8 @@ function WithdrawalReviewSection() {
       <div><p className="text-xs uppercase tracking-wider text-slate-500">Pays et ville</p><p className="mt-1 text-slate-200">{request.country} · {request.city}</p></div>
       <div><p className="text-xs uppercase tracking-wider text-slate-500">Demande reçue le</p><p className="mt-1 text-slate-200">{new Date(request.created_at).toLocaleDateString('fr-FR')}</p></div>
     </div><div className="mt-5 grid gap-3 sm:grid-cols-2">
-      <button disabled={workingId === request.request_id} onClick={() => void review(request.request_id, 'rejected')} className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-400/30 px-4 py-3 text-sm font-bold text-red-200 hover:bg-red-500/10 disabled:opacity-50"><X className="h-4 w-4" /> Refuser le retrait</button>
-      <button disabled={workingId === request.request_id} onClick={() => void review(request.request_id, 'approved')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-500 disabled:opacity-50"><Check className="h-4 w-4" /> Confirmer le retrait</button>
+      <button disabled={workingId === request.request_id} onClick={() => void review(request.request_id, 'rejected')} className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-400/30 px-4 py-3 text-sm font-bold text-red-200 hover:bg-red-500/10 disabled:opacity-50"><X className="h-4 w-4" /> Refusé le retrait</button>
+      <button disabled={workingId === request.request_id} onClick={() => void review(request.request_id, 'approved')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-500 disabled:opacity-50"><Check className="h-4 w-4" /> Accepté le retrait</button>
     </div></article>}
     {error && <p className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>}
     {message && <p className="mt-5 rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">{message}</p>}
