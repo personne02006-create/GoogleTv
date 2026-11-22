@@ -129,8 +129,8 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   const [withdrawalCode, setWithdrawalCode] = useState(savedWithdrawalCode);
   const taxPaidKey = `gtv-tax-paid-${profile.id}`;
   const [taxPaid, setTaxPaid] = useState(() => { try { return window.localStorage.getItem(taxPaidKey) === '1'; } catch { return false; } });
-  const [codeStep, setCodeStep] = useState(!savedWithdrawalCode);
-  const [certificationBlocked, setCertificationBlocked] = useState(!profile.is_certified && (savedFlow?.certificationBlocked === true || taxPaid));
+  const [codeStep, setCodeStep] = useState(false);
+  const [certificationBlocked, setCertificationBlocked] = useState(savedFlow?.certificationBlocked === true && Boolean(savedWithdrawalCode));
   const [codeReady, setCodeReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [validating, setValidating] = useState(false);
