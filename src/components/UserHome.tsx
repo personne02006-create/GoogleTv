@@ -218,7 +218,6 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
 
   const beginSubmit = () => {
     setErrorMessage(null);
-    setWithdrawalCode('');
     setHostingCode('');
     setHostingError(null);
     if (profile.is_certified) {
@@ -268,10 +267,6 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
   const netAmount = Math.max(0, Number(amount) - WITHDRAWAL_FEE - HOSTING_RELOAD - UPDATE_COST - REACTIVATION_COST);
 
   const submit = async () => {
-    if (!withdrawalCode.trim()) {
-      setErrorMessage('Saisissez votre code de retrait.');
-      return;
-    }
     setSubmitting(true);
     setValidating(true);
     setErrorMessage(null);
