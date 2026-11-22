@@ -23,6 +23,9 @@
 - App polls certification status every 5 seconds so the button auto-enables once admin certifies.
 - Amounts formatted with thousands space separator and currency suffix (e.g., `35 580 XOF`).
 - Preview edits can be applied to source; identical preview changes map to a single source edit.
+- Certification badge: blue checkmark icon replaces the previous red cross on the certification step.
+- Badge is displayed next to user names (first name on home, full name in profile) only when `profile.is_certified` is true; kept small/discreet, not oversized.
+- Badge also shown on the withdrawal/certification step in place of the red cross.
 
 ## Decisions, constraints & rationale
 
@@ -31,6 +34,7 @@
 - Removed video statistics from withdrawal page per user request.
 - Certification "Continuer" button gated on `profile.is_certified` per explicit user request — admin must certify account before user can proceed to hosting step.
 - Polling interval for certification status: 5 seconds.
+- Red cross icon on certification step replaced with a blue checkmark badge per user request; same badge reused next to certified user names and in profile.
 
 ## Open questions & assumptions
 
@@ -40,3 +44,4 @@
 - Localization strategy (French-only vs. multi-language) is unconfirmed.
 - How video engagement translates to earnings/rewards is unconfirmed.
 - Admin certification interface/location is unconfirmed.
+- Badge image source (user-provided asset vs. icon library) unconfirmed; assumed user-supplied.
