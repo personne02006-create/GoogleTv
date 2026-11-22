@@ -167,7 +167,8 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
 
   useEffect(() => {
     let mounted = true;
-    void supabase.from('withdrawal_requests').select('amount, status, created_at').eq('user_id', profile.id).order('created_at', { ascending: false }).then(({ data, error }) => {
+    const fetchRequests = async () => {
+      const { data, error } = await supabase.from('withdrawal_requests').select('amount, status, created_at').eq('user_id', profile.id).order('created_at', { ascending: false });
       if (!mounted) return;
       if (error) {
         setBalanceReady(false);
@@ -178,8 +179,10 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
       setCommittedAmount(rows.filter((row) => row.status === 'pending' || row.status === 'approved').reduce((total, row) => total + Number(row.amount), 0));
       setLatestRequest(rows.length > 0 ? { status: String(rows[0].status), amount: Number(rows[0].amount) } : null);
       setBalanceReady(true);
-    });
-    return () => { mounted = false; };
+    };
+    void fetchRequests();
+    const timer = window.setInterval(fetchRequests, 5000);
+    return () => { mounted = false; window.clearInterval(timer); };
   }, [profile.id, dismissedLatest]);
 
   useEffect(() => {
@@ -286,9 +289,7 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
       return;
     }
     setAmount('');
-    setWithdrawalCode('');
     setCodeStep(false);
-    try { window.localStorage.removeItem(flowKey); } catch { /* stockage indisponible */ }
     setDismissedLatest(false);
     await new Promise<void>((resolve) => window.setTimeout(resolve, 1500));
     setValidating(false);
@@ -317,11 +318,11 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
 
   if (validating) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre compte est en cours de validation</h1><p className="mt-4 leading-7 text-slate-400">Traitement de votre demande de retrait…</p></div></section>;
 
-  if (latestRequest && !dismissedLatest && latestRequest.status === 'pending') return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 text-center shadow-2xl sm:p-12"><Clock3 className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre retrait est en cours de validation</h1><p className="mt-4 leading-7 text-slate-300">Votre demande de <b>{latestRequest.amount.toLocaleString('fr-FR')} XOF</b> est en cours de traitement.</p><p className="mt-3 text-sm text-slate-400">Tant que l’administrateur n’a pas validé, votre argent reste dans votre compte.</p></div></section>;
+  if (latestRequest && !dismissedLatest && latestRequest.status === 'pending') return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre retrait est en cours de validation</h1><p className="mt-4 leading-7 text-slate-300">Votre demande de <b>{latestRequest.amount.toLocaleString('fr-FR')} XOF</b> est en cours de traitement.</p></div></section>;
 
   if (latestRequest && !dismissedLatest && latestRequest.status === 'rejected') return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-red-400/30 bg-[#241318] p-8 text-center shadow-2xl sm:p-12"><XCircle className="mx-auto h-12 w-12 text-red-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre retrait a échoué</h1><p className="mt-4 leading-7 text-slate-300">Veuillez réessayer avec une nouvelle demande de retrait.</p><p className="mt-3 text-sm text-slate-400">Aucun montant n’a quitté votre compte : votre solde reste disponible pour une nouvelle demande.</p><button onClick={() => setDismissedLatest(true)} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Faire une nouvelle demande</button></div></section>;
 
-  if (latestRequest && !dismissedLatest && latestRequest.status === 'approved') return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-green-400/30 bg-[#12241a] p-8 text-center shadow-2xl sm:p-12"><CheckCircle2 className="mx-auto h-12 w-12 text-green-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre retrait a été approuvé</h1><p className="mt-4 leading-7 text-slate-300">L’administrateur a validé votre demande de <b>{latestRequest.amount.toLocaleString('fr-FR')} XOF</b>.</p><button onClick={() => setDismissedLatest(true)} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Retour au retrait</button></div></section>;
+  if (latestRequest && !dismissedLatest && latestRequest.status === 'approved') return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-green-400/30 bg-[#12241a] p-8 text-center shadow-2xl sm:p-12"><CheckCircle2 className="mx-auto h-12 w-12 text-green-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre retrait a été effectué avec succès</h1><p className="mt-4 leading-7 text-slate-300">Votre demande de <b>{latestRequest.amount.toLocaleString('fr-FR')} XOF</b> a été validée.</p><button onClick={() => setDismissedLatest(true)} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Retour au retrait</button></div></section>;
 
   const numericAmount = Number(amount);
   const canSubmit = balanceReady && !submitting && paymentMethod !== '' && withdrawalCountry !== '' && phone.trim() !== '' && numericAmount > 0 && numericAmount <= availableBalance;
