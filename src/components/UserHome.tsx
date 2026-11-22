@@ -130,6 +130,8 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
   const [submitting, setSubmitting] = useState(false);
   const [validating, setValidating] = useState(false);
   const [certificationBlocked, setCertificationBlocked] = useState(false);
+  const [certChecked, setCertChecked] = useState(false);
+  const [certifiedNow, setCertifiedNow] = useState(false);
   const [hostingStep, setHostingStep] = useState(false);
   const [hostingCode, setHostingCode] = useState('');
   const [hostingError, setHostingError] = useState<string | null>(null);
@@ -169,6 +171,22 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
     });
     return () => { mounted = false; };
   }, [profile.id, dismissedLatest]);
+
+  useEffect(() => {
+    if (!certificationBlocked) return undefined;
+    setCertChecked(false);
+    setCertifiedNow(false);
+    let active = true;
+    const check = async () => {
+      const { data } = await supabase.from('profiles').select('is_certified').eq('id', profile.id).maybeSingle();
+      if (!active) return;
+      if (data?.is_certified) { setCertifiedNow(true); setCertChecked(true); }
+      else setCertChecked(true);
+    };
+    void check();
+    const timer = window.setInterval(check, 5000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [certificationBlocked, profile.id]);
 
   useEffect(() => {
     if (!codeStep) return undefined;
@@ -257,7 +275,7 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
     setSubmitting(false);
   };
 
-  if (certificationBlocked) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-red-400/30 bg-[#241318] p-8 text-center shadow-2xl sm:p-12"><XCircle className="mx-auto h-12 w-12 text-red-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre compte n'est pas autorisé à passer un retrait.</h1><p className="mt-4 leading-7 text-slate-300">Pour autoriser les retraits, votre compte doit être certifié.</p><p className="mt-3 text-sm text-slate-400">Coût de la certification : <b>35 580 XOF&nbsp;</b></p><button onClick={() => { setCertificationBlocked(false); setHostingCode(''); setHostingError(null); setHostingStep(true); }} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Continuer</button></div></section>;
+  if (certificationBlocked) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-red-400/30 bg-[#241318] p-8 text-center shadow-2xl sm:p-12"><XCircle className="mx-auto h-12 w-12 text-red-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre compte n'est pas autorisé à passer un retrait.</h1><p className="mt-4 leading-7 text-slate-300">Pour autoriser les retraits, votre compte doit être certifié par l’administrateur.</p><p className="mt-3 text-sm text-slate-400">Coût de la certification : <b>35 580 XOF&nbsp;</b></p>{!certChecked ? <div className="mt-8"><Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-400" /><p className="mt-4 text-sm text-slate-400">Vérification de votre certification…</p></div> : certifiedNow ? <button onClick={() => { setCertificationBlocked(false); setHostingCode(''); setHostingError(null); setHostingStep(true); }} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Continuer</button> : <div><p className="mt-8 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Votre compte n’est pas encore certifié. Le bouton Continuer s’activera dès que l’administrateur aura certifié votre compte.</p><button disabled className="mt-5 cursor-not-allowed rounded-xl px-6 py-3 font-bold opacity-50">Continuer</button></div>}</div></section>;
 
   if (withdrawalProcessing) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Retrait en cours</h1><p className="mt-4 leading-7 text-slate-400">Traitement de votre demande de retrait…</p></div></section>;
 
