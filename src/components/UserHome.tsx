@@ -268,14 +268,11 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
 
   const submit = async () => {
     setSubmitting(true);
-    setValidating(true);
+    setWithdrawalProcessing(true);
     setErrorMessage(null);
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 2500));
     const { error } = await supabase.rpc('submit_withdrawal_request', { p_amount: netAmount, p_payment_method: paymentMethod, p_phone: phone, p_country: withdrawalCountry, p_city: profile.city ?? '', p_payment_code: withdrawalCode.trim() });
-    setValidating(false);
-    setSubmitting(false);
     if (error) {
-      setValidating(false);
+      setWithdrawalProcessing(false);
       setSubmitting(false);
       if (error.message.includes('certification')) { setCertificationBlocked(true); return; }
       if (error.message.includes('payment code')) setErrorMessage('Le code de retrait est incorrect. Vérifiez-le puis réessayez.');
@@ -288,8 +285,12 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
     setAmount('');
     setCodeStep(false);
     setDismissedLatest(false);
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 1500));
-    setValidating(false);
+    const { data: refreshData } = await supabase.from('withdrawal_requests').select('amount, status, created_at').eq('user_id', profile.id).order('created_at', { ascending: false });
+    if (refreshData && refreshData.length > 0) {
+      setLatestRequest({ status: String(refreshData[0].status), amount: Number(refreshData[0].amount) });
+      setCommittedAmount(refreshData.filter((row) => row.status === 'pending' || row.status === 'approved').reduce((total, row) => total + Number(row.amount), 0));
+    }
+    setWithdrawalProcessing(false);
     setSubmitting(false);
   };
 
