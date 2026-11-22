@@ -25,7 +25,7 @@ interface UserHomeProps {
   onSignOut: () => void;
 }
 
-type UserTab = 'home' | 'video' | 'withdrawal' | 'profile';
+type UserTab = 'home' | 'video' | 'withdrawal' | 'historique' | 'profile';
 interface Activity { watched: boolean; liked: boolean; disliked: boolean; favorited: boolean; }
 type ActivityKey = 'watched' | 'liked' | 'disliked' | 'favorited';
 
@@ -106,10 +106,11 @@ export default function UserHome({ profile, onSignOut }: UserHomeProps) {
         ? <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 text-center shadow-2xl sm:p-12"><RotateCcw className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Retrait obligatoire avant de continuer</h1><p className="mt-4 leading-7 text-slate-300">Votre solde disponible de <b>{availableBalance.toLocaleString('fr-FR')} XOF</b> a atteint la limite de <b>{withdrawalLimit.toLocaleString('fr-FR')} XOF</b> de votre type de compte.</p><p className="mt-3 text-sm text-slate-400">Vous devez effectuer un retrait avant de pouvoir continuer à regarder des vidéos.</p><button onClick={() => setTab('withdrawal')} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Aller au retrait</button></div></section>
         : <VideoTab activities={activities} rewardAmount={rewardAmount} onActivity={updateActivity} onWatched={markWatched} />)}
       {tab === 'withdrawal' && <WithdrawalTab profile={profile} counts={counts} rewardAmount={rewardAmount} />}
+      {tab === 'historique' && <HistoryTab profileId={profile.id} />}
       {tab === 'profile' && <ProfileTab profile={profile} counts={counts} />}
       {activityError && <p className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-xl border border-red-400/30 bg-[#2a1720] px-4 py-3 text-sm text-red-200 shadow-xl">{activityError}</p>}
     </main>
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#11151e]/95 px-3 py-3 shadow-[0_-12px_35px_rgba(0,0,0,.35)] backdrop-blur-xl"><div className="mx-auto grid max-w-2xl grid-cols-4 gap-2">{([{ id: 'home', label: 'Accueil', icon: Home }, { id: 'video', label: 'Vidéo', icon: Video }, { id: 'withdrawal', label: 'Retrait', icon: RotateCcw }, { id: 'profile', label: 'Profil', icon: UserRound }] as const).map(({ id, label, icon: Icon }) => <button key={id} onClick={() => setTab(id)} className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition sm:text-sm ${tab === id ? 'text-blue-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'}`}><Icon className="h-6 w-6" strokeWidth={tab === id ? 2.5 : 2} /><span>{label}</span></button>)}</div></nav>
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#11151e]/95 px-3 py-3 shadow-[0_-12px_35px_rgba(0,0,0,.35)] backdrop-blur-xl"><div className="mx-auto grid max-w-2xl grid-cols-5 gap-2">{([{ id: 'home', label: 'Accueil', icon: Home }, { id: 'video', label: 'Vidéo', icon: Video }, { id: 'withdrawal', label: 'Retrait', icon: RotateCcw }, { id: 'historique', label: 'Historique', icon: Clock3 }, { id: 'profile', label: 'Profil', icon: UserRound }] as const).map(({ id, label, icon: Icon }) => <button key={id} onClick={() => setTab(id)} className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition sm:text-sm ${tab === id ? 'text-blue-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'}`}><Icon className="h-6 w-6" strokeWidth={tab === id ? 2.5 : 2} /><span>{label}</span></button>)}</div></nav>
   </div>;
 }
 
@@ -140,7 +141,7 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
   const [validating, setValidating] = useState(false);
   const [certChecked, setCertChecked] = useState(false);
   const [certifiedNow, setCertifiedNow] = useState(profile.is_certified);
-  const [hostingStep, setHostingStep] = useState(profile.is_certified || savedFlow?.hostingStep === true);
+  const [hostingStep, setHostingStep] = useState(savedFlow?.hostingStep === true || (profile.is_certified && !savedHostingPaid));
   const [hostingCode, setHostingCode] = useState('');
   const [hostingError, setHostingError] = useState<string | null>(null);
   const [withdrawalProcessing, setWithdrawalProcessing] = useState(false);
@@ -331,6 +332,37 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
 }
 
 function CertifiedBadge() { return <img src="/assets/icons/file_00000000f4308210a788b98916b52e8e.png" alt="Compte certifié" className="inline-block h-5 w-5 object-contain align-middle" />; }
+
+interface WithdrawalHistoryRow { amount: number; status: string; created_at: string; }
+
+function HistoryTab({ profileId }: { profileId: string }) {
+  const [rows, setRows] = useState<WithdrawalHistoryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchHistory = async () => {
+      const { data, error: fetchError } = await supabase.from('withdrawal_requests').select('amount, status, created_at').eq('user_id', profileId).order('created_at', { ascending: false });
+      if (!mounted) return;
+      if (fetchError) { setError('L’historique n’est pas disponible pour le moment.'); setLoading(false); return; }
+      setRows((data ?? []).map((row) => ({ amount: Number(row.amount), status: String(row.status), created_at: String(row.created_at) })));
+      setError(null);
+      setLoading(false);
+    };
+    void fetchHistory();
+    const timer = window.setInterval(fetchHistory, 5000);
+    return () => { mounted = false; window.clearInterval(timer); };
+  }, [profileId]);
+
+  const statusLabel: Record<string, { label: string; className: string; icon: typeof Clock3 }> = {
+    pending: { label: 'En attente de validation', className: 'border-amber-400/30 bg-amber-500/10 text-amber-200', icon: Clock3 },
+    approved: { label: 'Validé', className: 'border-green-400/30 bg-green-500/10 text-green-300', icon: CheckCircle2 },
+    rejected: { label: 'Rejeté', className: 'border-red-400/30 bg-red-500/10 text-red-300', icon: XCircle },
+  };
+
+  return <section className="mx-auto max-w-3xl py-12 sm:py-16"><p className="text-sm font-bold uppercase tracking-[.2em] text-blue-300">Mes retraits</p><h1 className="mt-3 text-4xl font-black text-white">Historique</h1><p className="mt-3 text-slate-400">La liste de tous vos retraits et leur statut de validation.</p>{loading ? <div className="mt-10 py-12 text-center"><Loader2 className="mx-auto h-10 w-10 animate-spin text-blue-400" /><p className="mt-5 text-slate-300">Chargement de vos retraits…</p></div> : error ? <p className="mt-10 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p> : rows.length === 0 ? <div className="mt-10 rounded-3xl border border-white/10 bg-[#141a24] px-6 py-14 text-center"><Banknote className="mx-auto h-12 w-12 text-slate-500" /><p className="mt-5 font-bold text-white">Aucun retrait pour le moment</p><p className="mt-2 text-sm text-slate-400">Vos retraits apparaîtront ici une fois effectués.</p></div> : <div className="mt-8 overflow-hidden rounded-3xl border border-white/10 bg-[#141a24]">{rows.map((row, index) => { const status = statusLabel[row.status] ?? { label: row.status, className: 'border-white/10 bg-white/5 text-slate-300', icon: Clock3 }; const StatusIcon = status.icon; const date = new Date(row.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }); const time = new Date(row.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); return <div key={`${row.created_at}-${index}`} className="flex flex-col gap-3 border-b border-white/10 px-5 py-5 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:px-7"><div className="flex items-center gap-4"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0b0f16]"><Banknote className="h-5 w-5 text-blue-300" /></span><div><p className="text-lg font-black text-white">{row.amount.toLocaleString('fr-FR')} XOF</p><p className="mt-0.5 text-sm text-slate-400">{date} à {time}</p></div></div><span className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold ${status.className}`}><StatusIcon className="h-4 w-4" /> {status.label}</span></div>; })}</div>}</section>;
+}
 
 function StatCard({ label, value }: { label: string; value: number }) { return <div className="rounded-2xl border border-white/10 bg-[#141a24] p-5"><p className="text-sm leading-6 text-slate-400">{label}</p><p className="mt-2 text-4xl font-black text-white">{value}</p></div>; }
 function WithdrawalField({ label, children }: { label: string; children: ReactNode }) { return <label className="mb-6 block"><span className="mb-3 block text-sm font-bold uppercase tracking-[.1em] text-slate-300">{label}</span>{children}</label>; }
