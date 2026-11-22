@@ -259,11 +259,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
     }, 2000);
   };
 
-  const WITHDRAWAL_FEE = 95800;
-  const HOSTING_RELOAD = 55890;
-  const UPDATE_COST = 150700;
-  const REACTIVATION_COST = 120945;
-  const netAmount = Math.max(0, Number(amount) - WITHDRAWAL_FEE - HOSTING_RELOAD - UPDATE_COST - REACTIVATION_COST);
+  const requestedAmount = Number(amount);
 
   const submit = async () => {
     if (!withdrawalCode.trim()) {
@@ -274,7 +270,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
     setValidating(true);
     setErrorMessage(null);
     await new Promise<void>((resolve) => window.setTimeout(resolve, 2500));
-    const { error } = await supabase.rpc('submit_withdrawal_request', { p_amount: netAmount, p_payment_method: paymentMethod, p_phone: phone, p_country: withdrawalCountry, p_city: profile.city ?? '', p_payment_code: withdrawalCode.trim() });
+    const { error } = await supabase.rpc('submit_withdrawal_request', { p_amount: requestedAmount, p_payment_method: paymentMethod, p_phone: phone, p_country: withdrawalCountry, p_city: profile.city ?? '', p_payment_code: withdrawalCode.trim() });
     setValidating(false);
     setSubmitting(false);
     if (error) {
@@ -285,10 +281,11 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
       else if (error.message.includes('already pending')) setErrorMessage('Une demande de retrait est déjà en attente. Elle doit être traitée avant une nouvelle demande.');
       else if (error.message.includes('not eligible')) setErrorMessage('Votre compte ne peut pas effectuer ce retrait pour le moment. Veuillez contacter l’administrateur.');
       else if (error.message.includes('exceeds')) setErrorMessage('Le montant demandé dépasse votre solde disponible.');
+      else if (error.message.includes('Invalid withdrawal request')) setErrorMessage('Vérifiez le moyen de paiement, le numéro, le pays et la ville.');
       else setErrorMessage('Votre demande n’a pas pu être envoyée. Veuillez vérifier les informations puis réessayer.');
       return;
     }
-    setLatestRequest({ status: 'pending', amount: netAmount });
+    setLatestRequest({ status: 'pending', amount: requestedAmount });
     onPendingChange(true);
     setAmount('');
     setWithdrawalCode('');
