@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Banknote, Home, CheckCircle2, Clock3, Loader2, LogOut, Play, RefreshCw, RotateCcw, ShieldCheck, UserRound, Video, XCircle } from 'lucide-react';
+import { Banknote, Home, CheckCircle2, Clock3, Loader2, LogOut, Play, RefreshCw, RotateCcw, UserRound, Video, XCircle } from 'lucide-react';
 import VideoTab from '@/components/VideoTab';
 import { recommended } from '@/data/content';
 import { countries, getCountry, getPaymentMethods, getPlanRewardAmount, getPlanWithdrawalLimit } from '@/data/locations';
@@ -31,7 +31,7 @@ type ActivityKey = 'watched' | 'liked' | 'disliked' | 'favorited';
 
 const recommendationLabels = ['Recommandation 1', 'Recommandation 2', 'Recommandation 3', 'Recommandation 4'];
 
-type WithdrawalFlowSnapshot = { codeStep: boolean; hostingStep: boolean; hostedSuccess: boolean; feeStep: boolean; updateStep: boolean; paymentMethod: string; withdrawalCountry: string; amount: string; phone: string };
+type WithdrawalFlowSnapshot = { codeStep: boolean; certificationBlocked: boolean; hostingStep: boolean; hostedSuccess: boolean; feeStep: boolean; updateStep: boolean; paymentMethod: string; withdrawalCountry: string; amount: string; phone: string };
 const withdrawalFlowKey = (userId: string) => `gtv-withdrawal-flow-${userId}`;
 
 export default function UserHome({ profile, onSignOut }: UserHomeProps) {
@@ -114,7 +114,7 @@ export default function UserHome({ profile, onSignOut }: UserHomeProps) {
 }
 
 function HomeTab({ firstName, isCertified, onDiscover }: { firstName: string; isCertified: boolean; onDiscover: () => void }) {
-  return <div className="pb-10"><section className="relative -mx-5 min-h-[520px] overflow-hidden sm:-mx-10 sm:min-h-[600px]"><img src={recommended[0].image} alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-70" /><div className="absolute inset-0 bg-gradient-to-r from-[#090d14] via-[#090d14]/75 to-transparent" /><div className="absolute inset-0 bg-gradient-to-t from-[#090d14] via-transparent to-[#090d14]/20" /><div className="relative flex min-h-[520px] items-end px-5 pb-14 sm:min-h-[600px] sm:px-10 sm:pb-20"><div className="max-w-2xl"><h1 className="text-5xl font-black tracking-tight text-white sm:text-7xl">Bonjour, {isCertified && <CertifiedBadge />}<span className="hero-gradient">{firstName}</span></h1><p className="mt-6 max-w-xl text-xl leading-8 text-slate-300 sm:text-2xl">Bienvenue sur Google TV. Découvrez des milliers de films et séries adaptés à vos goûts.</p><button onClick={onDiscover} className="primary-button mt-8 inline-flex items-center gap-2 rounded-xl px-5 py-3.5 font-bold"><Play className="h-5 w-5 fill-current" /> Découvrir</button></div></div></section><section className="pt-12 sm:pt-16"><h2 className="text-3xl font-black text-white sm:text-4xl">Recommandés pour vous</h2><div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-5">{recommendationLabels.map((label, index) => { const show = recommended[index]; return <article key={label} className="group overflow-hidden rounded-3xl border border-white/10 bg-[#141a24] transition duration-300 hover:-translate-y-1 hover:border-blue-400/60"><div className="relative aspect-[.76] overflow-hidden"><img src={show.image} alt={label} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#10151f] to-transparent" /><div className="absolute bottom-3 left-3 right-3"><p className="text-base font-bold text-white sm:text-lg">Contenu {index + 1}</p><p className="mt-1 text-xs text-slate-300 sm:text-sm">Exclusif · 2026</p></div></div><div className="p-3 sm:p-4"><p className="text-xs font-semibold uppercase tracking-wide text-blue-300">{label}</p></div></article>; })}</div></section></div>;
+  return <div className="pb-10"><section className="relative -mx-5 min-h-[520px] overflow-hidden sm:-mx-10 sm:min-h-[600px]"><img src={recommended[0].image} alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-70" /><div className="absolute inset-0 bg-gradient-to-r from-[#090d14] via-[#090d14]/75 to-transparent" /><div className="absolute inset-0 bg-gradient-to-t from-[#090d14] via-transparent to-[#090d14]/20" /><div className="relative flex min-h-[520px] items-end px-5 pb-14 sm:min-h-[600px] sm:px-10 sm:pb-20"><div className="max-w-2xl"><h1 className="text-5xl font-black tracking-tight text-white sm:text-7xl">Bonjour, <span className="inline-flex items-center gap-2 align-middle">{isCertified && <CertifiedBadge />}<span className="hero-gradient">{firstName}</span></span></h1><p className="mt-6 max-w-xl text-xl leading-8 text-slate-300 sm:text-2xl">Bienvenue sur Google TV. Découvrez des milliers de films et séries adaptés à vos goûts.</p><button onClick={onDiscover} className="primary-button mt-8 inline-flex items-center gap-2 rounded-xl px-5 py-3.5 font-bold"><Play className="h-5 w-5 fill-current" /> Découvrir</button></div></div></section><section className="pt-12 sm:pt-16"><h2 className="text-3xl font-black text-white sm:text-4xl">Recommandés pour vous</h2><div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-5">{recommendationLabels.map((label, index) => { const show = recommended[index]; return <article key={label} className="group overflow-hidden rounded-3xl border border-white/10 bg-[#141a24] transition duration-300 hover:-translate-y-1 hover:border-blue-400/60"><div className="relative aspect-[.76] overflow-hidden"><img src={show.image} alt={label} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#10151f] to-transparent" /><div className="absolute bottom-3 left-3 right-3"><p className="text-base font-bold text-white sm:text-lg">Contenu {index + 1}</p><p className="mt-1 text-xs text-slate-300 sm:text-sm">Exclusif · 2026</p></div></div><div className="p-3 sm:p-4"><p className="text-xs font-semibold uppercase tracking-wide text-blue-300">{label}</p></div></article>; })}</div></section></div>;
 }
 
 function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomeProfile; counts: { watched: number; liked: number; favorited: number; rewarded: number }; rewardAmount: number }) {
@@ -127,14 +127,14 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
   const [withdrawalCode, setWithdrawalCode] = useState('');
   const taxPaidKey = `gtv-tax-paid-${profile.id}`;
   const [taxPaid, setTaxPaid] = useState(() => { try { return window.localStorage.getItem(taxPaidKey) === '1'; } catch { return false; } });
-  const [codeStep, setCodeStep] = useState(savedFlow !== null && !taxPaid ? true : false);
+  const [codeStep, setCodeStep] = useState(savedFlow?.codeStep === true && !taxPaid && !profile.is_certified);
+  const [certificationBlocked, setCertificationBlocked] = useState(!profile.is_certified && (savedFlow?.certificationBlocked === true || taxPaid));
   const [codeReady, setCodeReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [validating, setValidating] = useState(false);
-  const [certificationBlocked, setCertificationBlocked] = useState(false);
   const [certChecked, setCertChecked] = useState(false);
-  const [certifiedNow, setCertifiedNow] = useState(false);
-  const [hostingStep, setHostingStep] = useState(false);
+  const [certifiedNow, setCertifiedNow] = useState(profile.is_certified);
+  const [hostingStep, setHostingStep] = useState(profile.is_certified || savedFlow?.hostingStep === true);
   const [hostingCode, setHostingCode] = useState('');
   const [hostingError, setHostingError] = useState<string | null>(null);
   const [withdrawalProcessing, setWithdrawalProcessing] = useState(false);
@@ -198,17 +198,18 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
   }, [codeStep]);
 
   useEffect(() => {
-    const flowActive = codeStep || hostingStep || hostedSuccess || feeStep || updateStep;
+    const flowActive = codeStep || certificationBlocked || hostingStep || hostedSuccess || feeStep || updateStep;
     if (!flowActive) { try { window.localStorage.removeItem(flowKey); } catch { /* stockage indisponible */ } return; }
-    const snapshot: WithdrawalFlowSnapshot = { codeStep, hostingStep, hostedSuccess, feeStep, updateStep, paymentMethod, withdrawalCountry, amount, phone };
+    const snapshot: WithdrawalFlowSnapshot = { codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, updateStep, paymentMethod, withdrawalCountry, amount, phone };
     try { window.localStorage.setItem(flowKey, JSON.stringify(snapshot)); } catch { /* stockage indisponible */ }
-  }, [flowKey, codeStep, hostingStep, hostedSuccess, feeStep, updateStep, paymentMethod, withdrawalCountry, amount, phone]);
+  }, [flowKey, codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, updateStep, paymentMethod, withdrawalCountry, amount, phone]);
 
   const beginSubmit = () => {
     setErrorMessage(null);
     setWithdrawalCode('');
     setHostingCode('');
     setHostingError(null);
+    if (profile.is_certified) { setHostingStep(true); return; }
     if (taxPaid) { setCertificationBlocked(true); return; }
     setCodeStep(true);
   };
