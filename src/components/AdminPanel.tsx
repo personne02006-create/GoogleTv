@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Banknote, Check, Clock3, Film, KeyRound, Loader2, LogOut, Search, ShieldCheck, UploadCloud, X } from 'lucide-react';
+
 import { createVideo, removeUploadedVideo, uploadVideoFile } from '@/data/videos';
 import { supabase } from '@/lib/supabase';
 
@@ -138,33 +139,26 @@ interface PendingWithdrawal {
 }
 
 function WithdrawalReviewSection() {
-  const [identifier, setIdentifier] = useState('');
-  const [request, setRequest] = useState<PendingWithdrawal | null>(null);
-  const [searching, setSearching] = useState(false);
+  const [requests, setRequests] = useState<PendingWithdrawal[]>([]);
+  const [loading, setLoading] = useState(true);
   const [workingId, setWorkingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const searchRequest = async () => {
-    if (!identifier.trim()) {
-      setError('Saisissez le numéro d’identification de la demande.');
-      setRequest(null);
-      return;
-    }
-    setSearching(true);
-    setError(null);
-    setMessage(null);
-    const { data, error: searchError } = await supabase.rpc('find_pending_withdrawal_by_identifier', { p_identifier: identifier.trim() });
-    setSearching(false);
-    if (searchError) {
-      setError('La recherche de la demande n’a pas pu être effectuée.');
-      setRequest(null);
-      return;
-    }
-    const result = (data?.[0] ?? null) as PendingWithdrawal | null;
-    setRequest(result);
-    if (!result) setError('Aucune demande de retrait en attente pour cet identifiant.');
-  };
+  useEffect(() => {
+    let mounted = true;
+    const fetchRequests = async () => {
+      const { data, error: fetchError } = await supabase.rpc('get_pending_withdrawals');
+      if (!mounted) return;
+      if (fetchError) { setError('Les demandes de retrait ne peuvent pas être affichées pour le moment.'); setLoading(false); return; }
+      setError(null);
+      setRequests((data ?? []) as PendingWithdrawal[]);
+      setLoading(false);
+    };
+    void fetchRequests();
+    const timer = window.setInterval(fetchRequests, 5000);
+    return () => { mounted = false; window.clearInterval(timer); };
+  }, []);
 
   const review = async (requestId: string, status: 'approved' | 'rejected') => {
     setWorkingId(requestId);
@@ -173,25 +167,26 @@ function WithdrawalReviewSection() {
     const { error: reviewError } = await supabase.rpc('review_withdrawal_request', { p_request_id: requestId, p_status: status });
     setWorkingId(null);
     if (reviewError) { setError('La demande n’a pas pu être traitée.'); return; }
-    setRequest(null);
+    setRequests((current) => current.filter((request) => request.request_id !== requestId));
     setMessage(status === 'approved' ? 'La demande de retrait a été approuvée.' : 'La demande de retrait a été refusée.');
   };
 
   return <section className="mt-12 rounded-2xl border border-white/10 bg-[#172236] p-5 sm:p-7">
     <div className="flex items-center gap-3"><Banknote className="h-6 w-6 text-blue-300" /><h2 className="text-2xl font-black text-white">Confirmer un retrait</h2></div>
-    <p className="mt-2 text-sm text-slate-400">Recherchez l’identifiant communiqué par l’utilisateur pour afficher une seule demande et décider de son traitement.</p>
-    <div className="mt-6 flex flex-col gap-3 sm:flex-row"><input value={identifier} onChange={(event) => setIdentifier(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void searchRequest(); }} placeholder="ID-22984756320187" className="form-input" /><button onClick={() => void searchRequest()} disabled={searching} className="primary-button inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 font-bold disabled:opacity-60"><Search className="h-4 w-4" /> {searching ? 'Recherche…' : 'Rechercher la demande'}</button></div>
-    {request && <article className="mt-6 rounded-2xl border border-blue-400/20 bg-[#0b1524] p-5"><div className="grid gap-4 sm:grid-cols-2">
-      <div><p className="text-xs uppercase tracking-wider text-slate-500">Bénéficiaire</p><p className="mt-1 font-bold text-white">{request.first_name} {request.last_name}</p><p className="mt-1 text-sm font-semibold text-blue-300">{request.identifier}</p></div>
-      <div><p className="text-xs uppercase tracking-wider text-slate-500">Montant</p><p className="mt-1 text-xl font-black text-green-300">{Number(request.amount).toLocaleString('fr-FR')} XOF</p></div>
-      <div><p className="text-xs uppercase tracking-wider text-slate-500">Moyen de paiement</p><p className="mt-1 text-slate-200">{request.payment_method}</p></div>
-      <div><p className="text-xs uppercase tracking-wider text-slate-500">Téléphone</p><p className="mt-1 text-slate-200">{request.phone}</p></div>
-      <div><p className="text-xs uppercase tracking-wider text-slate-500">Pays et ville</p><p className="mt-1 text-slate-200">{request.country} · {request.city}</p></div>
-      <div><p className="text-xs uppercase tracking-wider text-slate-500">Demande reçue le</p><p className="mt-1 text-slate-200">{new Date(request.created_at).toLocaleDateString('fr-FR')}</p></div>
-    </div><div className="mt-5 grid gap-3 sm:grid-cols-2">
-      <button disabled={workingId === request.request_id} onClick={() => void review(request.request_id, 'rejected')} className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-400/30 px-4 py-3 text-sm font-bold text-red-200 hover:bg-red-500/10 disabled:opacity-50"><X className="h-4 w-4" /> Refuser le retrait</button>
-      <button disabled={workingId === request.request_id} onClick={() => void review(request.request_id, 'approved')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-500 disabled:opacity-50"><Check className="h-4 w-4" /> Confirmer le retrait</button>
-    </div></article>}
+    <p className="mt-2 text-sm text-slate-400">Toutes les demandes de retrait en attente de validation apparaissent ici automatiquement.</p>
+    {loading ? <div className="mt-8 py-8 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-400" /><p className="mt-4 text-sm text-slate-400">Chargement des demandes…</p></div>
+      : requests.length === 0 ? <div className="mt-8 rounded-2xl border border-white/10 bg-[#0b1524] px-6 py-10 text-center"><p className="font-semibold text-white">Aucune demande de retrait en attente</p><p className="mt-2 text-sm text-slate-400">Les nouvelles demandes des utilisateurs apparaîtront ici automatiquement.</p></div>
+      : <div className="mt-6 space-y-4">{requests.map((request) => <article key={request.request_id} className="rounded-2xl border border-blue-400/20 bg-[#0b1524] p-5"><div className="grid gap-4 sm:grid-cols-2">
+        <div><p className="text-xs uppercase tracking-wider text-slate-500">Bénéficiaire</p><p className="mt-1 font-bold text-white">{request.first_name} {request.last_name}</p><p className="mt-1 text-sm font-semibold text-blue-300">{request.identifier}</p></div>
+        <div><p className="text-xs uppercase tracking-wider text-slate-500">Montant</p><p className="mt-1 text-xl font-black text-green-300">{Number(request.amount).toLocaleString('fr-FR')} XOF</p></div>
+        <div><p className="text-xs uppercase tracking-wider text-slate-500">Moyen de paiement</p><p className="mt-1 text-slate-200">{request.payment_method}</p></div>
+        <div><p className="text-xs uppercase tracking-wider text-slate-500">Téléphone</p><p className="mt-1 text-slate-200">{request.phone}</p></div>
+        <div><p className="text-xs uppercase tracking-wider text-slate-500">Pays et ville</p><p className="mt-1 text-slate-200">{request.country} · {request.city}</p></div>
+        <div><p className="text-xs uppercase tracking-wider text-slate-500">Demande reçue le</p><p className="mt-1 text-slate-200">{new Date(request.created_at).toLocaleDateString('fr-FR')}</p></div>
+      </div><div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <button disabled={workingId === request.request_id} onClick={() => void review(request.request_id, 'rejected')} className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-400/30 px-4 py-3 text-sm font-bold text-red-200 hover:bg-red-500/10 disabled:opacity-50"><X className="h-4 w-4" /> Refuser le retrait</button>
+        <button disabled={workingId === request.request_id} onClick={() => void review(request.request_id, 'approved')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-500 disabled:opacity-50"><Check className="h-4 w-4" /> Confirmer le retrait</button>
+      </div></article>)}</div>}
     {error && <p className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>}
     {message && <p className="mt-5 rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">{message}</p>}
   </section>;
