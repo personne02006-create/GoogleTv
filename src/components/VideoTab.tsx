@@ -56,9 +56,8 @@ function VideoCard({ video, rewardAmount, isPlaying, onPlay, activity, onActivit
     {isPlaying
       ? <div className="bg-black">
           {video.videoUrl
-            ? <video className="aspect-video h-full w-full" src={video.videoUrl} controls playsInline autoPlay title={video.title} />
+            ? <video className="block h-auto w-full" src={video.videoUrl} controls playsInline autoPlay title={video.title} />
             : <div className="aspect-video w-full"><iframe className="h-full w-full" src={`https://www.youtube.com/embed/${video.youtubeId ?? ''}?autoplay=1&playsinline=1&rel=0&modestbranding=1`} title={video.title} allow="autoplay; encrypted-media; picture-in-picture; web-share" loading="lazy" allowFullScreen /></div>}
-          <p className="border-t border-white/10 px-4 py-3 text-center text-xs font-semibold text-slate-400">Lecture intégrée dans l’application</p>
         </div>
       : <button onClick={onPlay} className="group relative block aspect-video w-full overflow-hidden" aria-label={`Regarder ${video.title}`}>
           <img src={video.thumbnailUrl ?? (video.youtubeId ? `https://i.ytimg.com/vi/${video.youtubeId}/hqdefault.jpg` : '')} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
