@@ -116,7 +116,7 @@ export default function UserHome({ profile, onSignOut }: UserHomeProps) {
 }
 
 function HomeTab({ firstName, isCertified, onDiscover }: { firstName: string; isCertified: boolean; onDiscover: () => void }) {
-  return <div className="pb-10"><section className="relative -mx-5 min-h-[520px] overflow-hidden sm:-mx-10 sm:min-h-[600px]"><img src={recommended[0].image} alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-70" /><div className="absolute inset-0 bg-gradient-to-r from-[#090d14] via-[#090d14]/75 to-transparent" /><div className="absolute inset-0 bg-gradient-to-t from-[#090d14] via-transparent to-[#090d14]/20" /><div className="relative flex min-h-[520px] items-end px-5 pb-14 sm:min-h-[600px] sm:px-10 sm:pb-20"><div className="max-w-2xl"><h1 className="text-5xl font-black tracking-tight text-white sm:text-7xl">Bonjour, <span className="inline-flex items-center gap-2 align-middle">{isCertified && <CertifiedBadge />}<span className="hero-gradient">{firstName}</span></span></h1><p className="mt-6 max-w-xl text-xl leading-8 text-slate-300 sm:text-2xl">Bienvenue sur Google TV. Découvrez des milliers de films et séries adaptés à vos goûts.</p><button onClick={onDiscover} className="primary-button mt-8 inline-flex items-center gap-2 rounded-xl px-5 py-3.5 font-bold"><Play className="h-5 w-5 fill-current" /> Découvrir</button></div></div></section><section className="pt-12 sm:pt-16"><h2 className="text-3xl font-black text-white sm:text-4xl">Recommandés pour vous</h2><div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-5">{recommendationLabels.map((label, index) => { const show = recommended[index]; return <article key={label} className="group overflow-hidden rounded-3xl border border-white/10 bg-[#141a24] transition duration-300 hover:-translate-y-1 hover:border-blue-400/60"><div className="relative aspect-[.76] overflow-hidden"><img src={show.image} alt={label} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#10151f] to-transparent" /><div className="absolute bottom-3 left-3 right-3"><p className="text-base font-bold text-white sm:text-lg">Contenu {index + 1}</p><p className="mt-1 text-xs text-slate-300 sm:text-sm">Exclusif · 2026</p></div></div><div className="p-3 sm:p-4"><p className="text-xs font-semibold uppercase tracking-wide text-blue-300">{label}</p></div></article>; })}</div></section></div>;
+  return <div className="pb-10"><section className="relative -mx-5 min-h-[520px] overflow-hidden sm:-mx-10 sm:min-h-[600px]"><img src={recommended[0].image} alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-70" /><div className="absolute inset-0 bg-gradient-to-r from-[#090d14] via-[#090d14]/75 to-transparent" /><div className="absolute inset-0 bg-gradient-to-t from-[#090d14] via-transparent to-[#090d14]/20" /><div className="relative flex min-h-[520px] items-end px-5 pb-14 sm:min-h-[600px] sm:px-10 sm:pb-20"><div className="max-w-2xl"><h1 className="text-5xl font-black tracking-tight text-white sm:text-7xl">Bonjour, <span className="inline-flex items-center gap-2 align-middle"><span className="hero-gradient">{firstName}</span>{isCertified && <CertifiedBadge />}</span></h1><p className="mt-6 max-w-xl text-xl leading-8 text-slate-300 sm:text-2xl">Bienvenue sur Google TV. Découvrez des milliers de films et séries adaptés à vos goûts.</p><button onClick={onDiscover} className="primary-button mt-8 inline-flex items-center gap-2 rounded-xl px-5 py-3.5 font-bold"><Play className="h-5 w-5 fill-current" /> Découvrir</button></div></div></section><section className="pt-12 sm:pt-16"><h2 className="text-3xl font-black text-white sm:text-4xl">Recommandés pour vous</h2><div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-5">{recommendationLabels.map((label, index) => { const show = recommended[index]; return <article key={label} className="group overflow-hidden rounded-3xl border border-white/10 bg-[#141a24] transition duration-300 hover:-translate-y-1 hover:border-blue-400/60"><div className="relative aspect-[.76] overflow-hidden"><img src={show.image} alt={label} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#10151f] to-transparent" /><div className="absolute bottom-3 left-3 right-3"><p className="text-base font-bold text-white sm:text-lg">Contenu {index + 1}</p><p className="mt-1 text-xs text-slate-300 sm:text-sm">Exclusif · 2026</p></div></div><div className="p-3 sm:p-4"><p className="text-xs font-semibold uppercase tracking-wide text-blue-300">{label}</p></div></article>; })}</div></section></div>;
 }
 
 function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { profile: UserHomeProfile; counts: { watched: number; liked: number; favorited: number; rewarded: number }; rewardAmount: number; onPendingChange: (pending: boolean) => void }) {
@@ -154,9 +154,10 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   const flowMutationQueue = useRef(Promise.resolve());
   const [updateCode, setUpdateCode] = useState('');
   const [updateError, setUpdateError] = useState<string | null>(null);
-  const [latestRequest, setLatestRequest] = useState<{ id: string; status: string; amount: number; dismissedAt: boolean } | null>(null);
+  const [latestRequest, setLatestRequest] = useState<{ id: string; status: string; amount: number; dismissedAt: boolean; acknowledgedAt: string | null } | null>(null);
   const [dismissedLatest, setDismissedLatest] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [approvalElapsed, setApprovalElapsed] = useState(0);
   const [committedAmount, setCommittedAmount] = useState(0);
   const [balanceReady, setBalanceReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -183,7 +184,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
 
   useEffect(() => {
     let mounted = true;
-    void supabase.from('withdrawal_requests').select('id, amount, status, dismissed_at, created_at').eq('user_id', profile.id).order('created_at', { ascending: false }).then(({ data, error }) => {
+    void supabase.from('withdrawal_requests').select('id, amount, status, dismissed_at, acknowledged_at, created_at').eq('user_id', profile.id).order('created_at', { ascending: false }).then(({ data, error }) => {
       if (!mounted) return;
       if (error) {
         setBalanceReady(false);
@@ -192,7 +193,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
       }
       const rows = data ?? [];
       setCommittedAmount(rows.filter((row) => row.status === 'pending' || row.status === 'approved').reduce((total, row) => total + Number(row.amount), 0));
-      const nextRequest = rows.length > 0 ? { id: String(rows[0].id), status: String(rows[0].status), amount: Number(rows[0].amount), dismissedAt: Boolean(rows[0].dismissed_at) } : null;
+      const nextRequest = rows.length > 0 ? { id: String(rows[0].id), status: String(rows[0].status), amount: Number(rows[0].amount), dismissedAt: Boolean(rows[0].dismissed_at), acknowledgedAt: rows[0].acknowledged_at ? String(rows[0].acknowledged_at) : null } : null;
       setLatestRequest(nextRequest);
       onPendingChange(nextRequest?.status === 'pending');
       setBalanceReady(true);
@@ -273,6 +274,22 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   }, [latestRequest?.status]);
 
   useEffect(() => {
+    if (latestRequest?.status !== 'approved' || latestRequest.acknowledgedAt || dismissedLatest || !latestRequest.id) return;
+    void supabase.rpc('acknowledge_withdrawal_approval', { p_request_id: latestRequest.id }).then(({ error }) => {
+      if (!error) setRefreshTick((tick) => tick + 1);
+    });
+  }, [latestRequest?.id, latestRequest?.status, latestRequest?.acknowledgedAt, dismissedLatest]);
+
+  useEffect(() => {
+    if (latestRequest?.status !== 'approved') { setApprovalElapsed(0); return undefined; }
+    const acknowledgedAt = latestRequest.acknowledgedAt ? new Date(latestRequest.acknowledgedAt).getTime() : Date.now();
+    const tick = () => setApprovalElapsed(Date.now() - acknowledgedAt);
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [latestRequest?.id, latestRequest?.status, latestRequest?.acknowledgedAt]);
+
+  useEffect(() => {
     const flowActive = codeStep || certificationBlocked || hostingStep || hostedSuccess || feeStep || feeValidation || updateStep;
     if (!flowActive) { try { window.localStorage.removeItem(flowKey); } catch { /* stockage indisponible */ } return; }
     const snapshot: WithdrawalFlowSnapshot = { codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, feeValidation, updateStep, withdrawalCode, paymentMethod, withdrawalCountry, amount, phone };
@@ -348,7 +365,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
       else setErrorMessage('Votre demande n’a pas pu être envoyée. Veuillez vérifier les informations puis réessayer.');
       return;
     }
-    setLatestRequest({ id: typeof requestId === 'string' ? requestId : '', status: 'pending', amount: requestedAmount, dismissedAt: false });
+    setLatestRequest({ id: typeof requestId === 'string' ? requestId : '', status: 'pending', amount: requestedAmount, dismissedAt: false, acknowledgedAt: null });
     onPendingChange(true);
     setAmount('');
     if (!hasCodeBypass) setWithdrawalCode('');
@@ -383,7 +400,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
 
   if (latestRequest && !dismissedLatest && !latestRequest.dismissedAt && latestRequest.status === 'rejected') return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-red-400/30 bg-[#241318] p-8 text-center shadow-2xl sm:p-12"><XCircle className="mx-auto h-12 w-12 text-red-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre retrait a échoué veuillez réessayer</h1><button onClick={() => { void dismissRejectedWithdrawal(); }} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Réessayer</button></div></section>;
 
-  if (latestRequest && !dismissedLatest && latestRequest.status === 'approved') return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-green-400/30 bg-[#12241a] p-8 text-center shadow-2xl sm:p-12"><CheckCircle2 className="mx-auto h-12 w-12 text-green-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre retrait a été effectué avec succès</h1><p className="mt-4 leading-7 text-slate-300">Votre demande de <b>{latestRequest.amount.toLocaleString('fr-FR')} XOF</b> a été validée avec succès.</p></div></section>;
+  if (latestRequest && !dismissedLatest && latestRequest.status === 'approved' && approvalElapsed < 120000) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-green-400/30 bg-[#12241a] p-8 text-center shadow-2xl sm:p-12"><CheckCircle2 className="mx-auto h-12 w-12 text-green-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre retrait a été effectué avec succès</h1><p className="mt-4 leading-7 text-slate-300">Votre demande de <b>{latestRequest.amount.toLocaleString('fr-FR')} XOF</b> a été validée avec succès.</p></div></section>;
 
   if (certificationBlocked) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><img src="/assets/icons/file_00000000f4308210a788b98916b52e8e.png" alt="Compte certifié" className="mx-auto h-16 w-16 object-contain" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre compte n'est pas autorisé à passer un retrait.</h1><p className="mt-4 leading-7 text-slate-300">Pour autoriser les retraits, votre compte doit être certifié.</p><p className="mt-3 text-sm text-slate-400">Coût de la certification : <b>35 580 XOF&nbsp;</b></p>{!certChecked ? <div className="mt-8"><Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-400" /><p className="mt-4 text-sm text-slate-400">Vérification de votre certification…</p></div> : certifiedNow ? <button onClick={() => { setCertificationBlocked(false); setHostingCode(''); setHostingError(null); setHostingStep(true); }} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Continuer</button> : <div><button disabled className="mt-5 cursor-not-allowed rounded-xl px-6 py-3 font-bold opacity-50">Continuer</button></div>}</div></section>;
 
@@ -410,4 +427,4 @@ function CertifiedBadge() { return <img src="/assets/icons/file_00000000f4308210
 
 function StatCard({ label, value }: { label: string; value: number }) { return <div className="rounded-2xl border border-white/10 bg-[#141a24] p-5"><p className="text-sm leading-6 text-slate-400">{label}</p><p className="mt-2 text-4xl font-black text-white">{value}</p></div>; }
 function WithdrawalField({ label, children }: { label: string; children: ReactNode }) { return <label className="mb-6 block"><span className="mb-3 block text-sm font-bold uppercase tracking-[.1em] text-slate-300">{label}</span>{children}</label>; }
-function ProfileTab({ profile, counts }: { profile: UserHomeProfile; counts: { watched: number; liked: number; favorited: number; rewarded: number } }) { const identifier = `ID-${profile.id.split('-').join('').slice(0, 15).toUpperCase()}`; const details = [['Numéro d’identification', identifier], ['Prénom', profile.first_name], ['Nom', profile.last_name], ['Adresse e-mail', profile.email ?? '—'], ['Téléphone', profile.phone ?? '—'], ['Pays', profile.country ?? '—'], ['Ville', profile.city ?? '—'], ['Date de naissance', profile.birth_date ?? '—'], ['Genre', profile.gender ?? '—']]; return <section className="mx-auto max-w-3xl py-12 sm:py-16"><p className="text-sm font-bold uppercase tracking-[.2em] text-blue-300">Mon compte</p><h1 className="mt-3 text-4xl font-black text-white">Profil</h1><p className="mt-3 flex items-center gap-2 text-xl font-bold text-white">{profile.is_certified && <CertifiedBadge />} {profile.first_name} {profile.last_name}</p><p className="mt-3 text-slate-400">Vos informations personnelles</p><div className="mt-8 grid gap-4 sm:grid-cols-4"><StatCard label="Vidéos regardées" value={counts.watched} /><StatCard label="Vidéos aimées" value={counts.liked} /><StatCard label="Favoris" value={counts.favorited} /><StatCard label="Récompenses validées" value={counts.rewarded} /></div><div className="mt-8 overflow-hidden rounded-3xl border border-white/10 bg-[#141a24]">{details.map(([label, value]) => <div key={label} className="flex flex-col gap-1 border-b border-white/10 px-5 py-4 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:px-7"><span className="text-slate-400">{label}</span><span className="break-all font-semibold text-white sm:text-right">{value}</span></div>)}</div></section>; }
+function ProfileTab({ profile, counts }: { profile: UserHomeProfile; counts: { watched: number; liked: number; favorited: number; rewarded: number } }) { const identifier = `ID-${profile.id.split('-').join('').slice(0, 15).toUpperCase()}`; const details = [['Numéro d’identification', identifier], ['Prénom', profile.first_name], ['Nom', profile.last_name], ['Adresse e-mail', profile.email ?? '—'], ['Téléphone', profile.phone ?? '—'], ['Pays', profile.country ?? '—'], ['Ville', profile.city ?? '—'], ['Date de naissance', profile.birth_date ?? '—'], ['Genre', profile.gender ?? '—']]; return <section className="mx-auto max-w-3xl py-12 sm:py-16"><p className="text-sm font-bold uppercase tracking-[.2em] text-blue-300">Mon compte</p><h1 className="mt-3 text-4xl font-black text-white">Profil</h1><p className="mt-3 flex items-center gap-2 text-xl font-bold text-white">{profile.first_name} {profile.last_name}{profile.is_certified && <CertifiedBadge />}</p><p className="mt-3 text-slate-400">Vos informations personnelles</p><div className="mt-8 grid gap-4 sm:grid-cols-4"><StatCard label="Vidéos regardées" value={counts.watched} /><StatCard label="Vidéos aimées" value={counts.liked} /><StatCard label="Favoris" value={counts.favorited} /><StatCard label="Récompenses validées" value={counts.rewarded} /></div><div className="mt-8 overflow-hidden rounded-3xl border border-white/10 bg-[#141a24]">{details.map(([label, value]) => <div key={label} className="flex flex-col gap-1 border-b border-white/10 px-5 py-4 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:px-7"><span className="text-slate-400">{label}</span><span className="break-all font-semibold text-white sm:text-right">{value}</span></div>)}</div></section>; }
