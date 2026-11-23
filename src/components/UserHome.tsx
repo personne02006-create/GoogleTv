@@ -81,7 +81,7 @@ export default function UserHome({ profile, onSignOut }: UserHomeProps) {
     const { error } = await supabase.from('user_content_activity').upsert({ content_id: contentId, watched: next.watched, liked: next.liked, disliked: next.disliked, favorited: next.favorited, updated_at: new Date().toISOString() }, { onConflict: 'user_id,content_id' });
     if (error) {
       setActivities((value) => ({ ...value, [contentId]: current }));
-      setActivityError(‘Action non enregistrée.’);
+      setActivityError('Action non enregistrée.');
     }
   };
 
@@ -364,7 +364,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
       else if (error.message.includes('not eligible')) setErrorMessage('Votre compte ne peut pas effectuer ce retrait pour le moment.');
       else if (error.message.includes('exceeds')) setErrorMessage('Le montant demandé dépasse votre solde disponible.');
       else if (error.message.includes('Invalid withdrawal request')) setErrorMessage('Vérifiez le moyen de paiement, le numéro, le pays et la ville.');
-      else setErrorMessage(‘Votre demande n’a pas pu être envoyée. Vérifiez les informations puis réessayez.’);
+      else setErrorMessage('Votre demande n\u2019a pas pu être envoyée. Vérifiez les informations puis réessayez.');
       return;
     }
     setLatestRequest({ id: typeof requestId === 'string' ? requestId : '', status: 'pending', amount: requestedAmount, dismissedAt: false, acknowledgedAt: null });
@@ -392,7 +392,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
     const { error } = await supabase.rpc('dismiss_withdrawal_request', { p_request_id: latestRequest.id });
     if (error) {
       setDismissedLatest(false);
-      setErrorMessage(‘Votre demande n’a pas pu être masquée. Réessayez.’);
+      setErrorMessage('Votre demande n’a pas pu être masquée. Réessayez.');
       return;
     }
     setHasCodeBypass(true);
@@ -440,7 +440,7 @@ function WithdrawalHistory({ profileId, onClose }: { profileId: string; onClose:
     let mounted = true;
     void supabase.from('withdrawal_requests').select('id, amount, status, payment_method, phone, country, city, created_at').eq('user_id', profileId).order('created_at', { ascending: false }).then(({ data, error: loadError }) => {
       if (!mounted) return;
-      if (loadError) { setError(‘Historique indisponible pour le moment.’); setRows([]); return; }
+      if (loadError) { setError('Historique indisponible pour le moment.'); setRows([]); return; }
       setRows(data ?? []);
     });
     return () => { mounted = false; };
