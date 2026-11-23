@@ -115,8 +115,10 @@ export default function App() {
         const reason = error.message || existingAccount.error?.message || '';
         if (/password/i.test(reason) && /too short|shorter than|at least\s+6|minimum\s+6/i.test(reason)) {
           setAuthError('Le mot de passe est trop court. Minimum 6 caractères.');
+        } else if (/known to be weak|easy to guess|password is weak|mot de passe.*faible/i.test(reason)) {
+          setAuthError('Ce mot de passe est trop facile à deviner. Choisissez-en un autre.');
         } else if (reason) {
-          setAuthError(reason);
+          setAuthError('Impossible de créer ce compte. Vérifiez vos informations.');
         } else {
           setAuthError('Impossible de créer ce compte. Vérifiez vos informations.');
         }
