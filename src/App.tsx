@@ -113,7 +113,7 @@ export default function App() {
       if (existingAccount.error || !existingAccount.data.user) {
         setAuthBusy(false);
         const reason = error.message || existingAccount.error?.message || '';
-        if (/password/i.test(reason) && /weak|at least|characters|short/i.test(reason)) {
+        if (/password/i.test(reason) && /too short|shorter than|at least\s+6|minimum\s+6/i.test(reason)) {
           setAuthError('Le mot de passe est trop court. Minimum 6 caractères.');
         } else if (reason) {
           setAuthError(reason);
