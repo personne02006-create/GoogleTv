@@ -160,6 +160,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   const [committedAmount, setCommittedAmount] = useState(0);
   const [balanceReady, setBalanceReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [hasCodeBypass, setHasCodeBypass] = useState(false);
   const beneficiary = `${profile.first_name} ${profile.last_name}`.trim();
   const paymentMethods = getPaymentMethods(withdrawalCountry);
   const dialCode = getCountry(withdrawalCountry)?.dialCode ?? '+';
@@ -217,7 +218,25 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
 
   useEffect(() => {
     let active = true;
+    void supabase.rpc('has_withdrawal_code_bypass').then(({ data }) => { if (active) setHasCodeBypass(data === true); });
+    return () => { active = false; };
+  }, [profile.id]);
+
+  useEffect(() => {
+    if (!hasCodeBypass) return;
+    setCodeStep(false);
+    setCertificationBlocked(false);
+    setHostingStep(false);
+    setHostedSuccess(false);
+    setFeeStep(false);
+    setFeeValidation(false);
+    setUpdateStep(false);
+  }, [hasCodeBypass]);
+
+  useEffect(() => {
+    let active = true;
     const loadSavedStage = async () => {
+      if (hasCodeBypass) { setServerFlowLoaded(true); return; }
       const { data, error } = await supabase.rpc('get_withdrawal_flow_state');
       if (!active) return;
       if (!hasSavedFlow && !error && typeof data === 'string') {
@@ -233,7 +252,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
     };
     void loadSavedStage();
     return () => { active = false; };
-  }, [hasSavedFlow, profile.id, profile.is_certified]);
+  }, [hasSavedFlow, hasCodeBypass, profile.id, profile.is_certified]);
 
   useEffect(() => {
     if (!serverFlowLoaded) return;
@@ -262,6 +281,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
 
   const beginSubmit = () => {
     setErrorMessage(null);
+    if (hasCodeBypass) { void submit(); return; }
     setHostingCode('');
     setHostingError(null);
     if (!withdrawalCode.trim()) { setCodeStep(true); return; }
@@ -305,7 +325,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   const requestedAmount = Number(amount);
 
   const submit = async () => {
-    if (!withdrawalCode.trim()) {
+    if (!hasCodeBypass && !withdrawalCode.trim()) {
       setErrorMessage('Saisissez votre code de retrait.');
       return;
     }
@@ -313,7 +333,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
     setValidating(true);
     setErrorMessage(null);
     await new Promise<void>((resolve) => window.setTimeout(resolve, 2500));
-    const { data: requestId, error } = await supabase.rpc('submit_withdrawal_request', { p_amount: requestedAmount, p_payment_method: paymentMethod, p_phone: phone, p_country: withdrawalCountry, p_city: profile.city ?? '', p_payment_code: withdrawalCode.trim() });
+    const { data: requestId, error } = await supabase.rpc('submit_withdrawal_request', { p_amount: requestedAmount, p_payment_method: paymentMethod, p_phone: phone, p_country: withdrawalCountry, p_city: profile.city ?? '', p_payment_code: hasCodeBypass ? '' : withdrawalCode.trim() });
     setValidating(false);
     setSubmitting(false);
     if (error) {
@@ -331,7 +351,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
     setLatestRequest({ id: typeof requestId === 'string' ? requestId : '', status: 'pending', amount: requestedAmount, dismissedAt: false });
     onPendingChange(true);
     setAmount('');
-    setWithdrawalCode('');
+    if (!hasCodeBypass) setWithdrawalCode('');
     setCodeStep(false);
     setHostingStep(false);
     setHostedSuccess(false);
@@ -354,7 +374,9 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
     if (error) {
       setDismissedLatest(false);
       setErrorMessage('Votre demande n’a pas pu être masquée. Veuillez réessayer.');
+      return;
     }
+    setHasCodeBypass(true);
   };
 
   if (latestRequest && !dismissedLatest && latestRequest.status === 'pending') return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 text-center shadow-2xl sm:p-12"><Clock3 className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre retrait est en cours de validation</h1><p className="mt-4 leading-7 text-slate-300">Votre demande de <b>{latestRequest.amount.toLocaleString('fr-FR')} XOF</b> est en attente de validation.</p></div></section>;
