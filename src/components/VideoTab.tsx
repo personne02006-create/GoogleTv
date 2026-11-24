@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Bookmark, CheckCircle2, Loader2, Play, ThumbsDown, ThumbsUp } from 'lucide-react';
-import { fetchVideos, toFrenchVideoTitle, type VideoItem } from '@/data/videos';
+import { fetchVideos, type VideoItem } from '@/data/videos';
 import { formatMoneyFromXof } from '@/data/locations';
 
 interface Activity { watched: boolean; liked: boolean; disliked: boolean; favorited: boolean; }
@@ -50,7 +50,7 @@ export default function VideoTab({ activities, rewardAmount, countryName, onActi
 }
 
 function VideoCard({ video, rewardAmount, countryName, isPlaying, onPlay, activity, onActivity }: { video: VideoItem; rewardAmount: number; countryName: string; isPlaying: boolean; onPlay: () => void; activity?: Activity; onActivity: (contentId: string, key: ActivityKey) => Promise<void> }) {
-  const frenchTitle = toFrenchVideoTitle(video.title);
+  const frenchTitle = video.title;
   const watched = Boolean(activity?.watched);
   const liked = Boolean(activity?.liked);
   const disliked = Boolean(activity?.disliked);

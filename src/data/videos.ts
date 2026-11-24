@@ -14,28 +14,6 @@ export interface UploadedVideo {
   path: string;
 }
 
-const knownFrenchTitles: Record<string, string> = {
-  'Shower Set': 'Ensemble de douche',
-  'Seafood with Girls': 'Fruits de mer entre amies',
-  'Taste The Difference': 'Goûtez la différence',
-  'Fresh From Press': 'Fraîchement sorti de presse',
-  'Too focused to panic': 'Trop concentré pour paniquer',
-  'Cinnamon Iced Coffee ☕️🤎': 'Café glacé à la cannelle',
-  'AI Burger Commercial': 'Publicité pour un burger créée par IA',
-  'Restaurant Ad Video Template (Editable)': 'Modèle de publicité de restaurant',
-  'Lorenza sans internet : le dernier jour !': 'Lorenza sans internet : le dernier jour !',
-};
-
-const frenchWords = /\b(le|la|les|un|une|des|du|de|pour|avec|dans|sur|sans|votre|vous|notre|chaque|comment|quand|et|est|aux|auxquels|l'effet|j'ai|c'est)\b|[àâçéèêëîïôùûüÿœ]/i;
-
-export function toFrenchVideoTitle(title: string): string {
-  const cleanTitle = title.trim();
-  if (!cleanTitle) return 'Vidéo publiée';
-  if (knownFrenchTitles[cleanTitle]) return knownFrenchTitles[cleanTitle];
-  if (frenchWords.test(cleanTitle)) return cleanTitle;
-  return 'Vidéo publiée sur Google TV';
-}
-
 const acceptedVideoTypes = new Set([
   'video/mp4',
   'video/webm',
