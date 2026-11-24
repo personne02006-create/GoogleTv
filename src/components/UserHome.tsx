@@ -18,6 +18,7 @@ interface UserHomeProfile {
   account_type?: string | null;
   is_certified: boolean;
   suspended_at: string | null;
+  test_balance_xof: number;
 }
 
 interface UserHomeProps {
@@ -98,7 +99,7 @@ export default function UserHome({ profile, onSignOut }: UserHomeProps) {
     rewarded: result.rewarded + Number(activity.watched && activity.liked && activity.favorited),
   }), { watched: 0, liked: 0, favorited: 0, rewarded: 0 }), [activities]);
 
-  const earnedBalance = counts.rewarded * rewardAmount;
+  const earnedBalance = Number(profile.test_balance_xof ?? 0) + counts.rewarded * rewardAmount;
   const availableBalance = Math.max(0, earnedBalance - committedAmount);
   const withdrawalRequired = availableBalance >= withdrawalLimit;
 
@@ -169,7 +170,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   const beneficiary = `${profile.first_name} ${profile.last_name}`.trim();
   const paymentMethods = getPaymentMethods(withdrawalCountry);
   const dialCode = getCountry(withdrawalCountry)?.dialCode ?? '+';
-  const earnedBalance = counts.rewarded * rewardAmount;
+  const earnedBalance = Number(profile.test_balance_xof ?? 0) + counts.rewarded * rewardAmount;
   const availableBalance = balanceReady ? Math.max(0, earnedBalance - committedAmount) : 0;
 
   const activeStage: WithdrawalStage | null = codeStep ? 'tax' : certificationBlocked ? 'certification' : hostingStep ? 'hosting' : hostedSuccess ? 'hosted' : feeValidation || feeStep ? 'fee' : updateStep ? 'update' : null;

@@ -28,6 +28,7 @@ interface AccountProfile {
   account_type: string | null;
   is_certified: boolean;
   suspended_at: string | null;
+  test_balance_xof: number;
 }
 
 export default function App() {
@@ -46,7 +47,7 @@ export default function App() {
 
   const loadProfile = useCallback(async (userId: string) => {
     setProfileLoading(true);
-    const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, email, phone, country, city, approval_status, role, birth_date, gender, account_type, is_certified, suspended_at').eq('id', userId).maybeSingle();
+    const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, email, phone, country, city, approval_status, role, birth_date, gender, account_type, is_certified, suspended_at, test_balance_xof').eq('id', userId).maybeSingle();
     setProfileLoading(false);
     if (error) {
       setProfile(null);
