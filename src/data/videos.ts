@@ -33,16 +33,7 @@ export async function fetchVideos(): Promise<VideoItem[]> {
 
   if (error) throw new Error(error.message);
 
-  const rows = data ?? [];
-  const first15 = rows.slice(0, 15);
-  const rest = rows.slice(15);
-
-  for (let i = rest.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [rest[i], rest[j]] = [rest[j], rest[i]];
-  }
-
-  return [...first15, ...rest].map((row) => ({
+  return (data ?? []).map((row) => ({
     id: row.id,
     title: row.title,
     channelName: row.channel_name,
