@@ -170,7 +170,12 @@ export default function App() {
     setAuthBusy(false); setAuthMode(null); setToast(isAdminRegistration ? 'Compte administrateur activé.' : 'Inscription enregistrée. Compte en attente d’activation.');
   };
 
-  const handleSignOut = async () => { await supabase.auth.signOut(); setToast('Vous êtes déconnecté.'); };
+  const handleSignOut = async () => {
+    try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* local session cleared regardless */ }
+    setUser(null);
+    setProfile(null);
+    setToast('Vous êtes déconnecté.');
+  };
   const saveFavorite = async (title: string) => { if (!user) { openAuth('login'); return; } await toggleFavorite(title); };
   const scrollToDetails = () => { document.getElementById('details')?.scrollIntoView({ behavior: 'smooth' }); window.history.replaceState(null, '', '#details'); };
 
