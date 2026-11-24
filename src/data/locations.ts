@@ -1,7 +1,7 @@
 export interface CountryInfo {
   name: string;
   dialCode: string;
-  currency: 'XOF' | 'XAF' | 'EUR' | 'GBP' | 'CHF' | 'MAD' | 'TND' | 'EGP' | 'GHS' | 'NGN' | 'KES' | 'MUR' | 'RWF' | 'ZAR' | 'UGX' | 'ZMW' | 'DZD' | 'AOA' | 'BWP' | 'CVE' | 'CDF' | 'ERN' | 'SZL' | 'ETB' | 'GMD' | 'GNF' | 'LRD' | 'LYD' | 'LSL' | 'MGA' | 'MWK' | 'MRU' | 'MZN' | 'NAD' | 'STN' | 'SCR' | 'SLE' | 'SOS' | 'SSP' | 'SDG' | 'TZS' | 'ZWL' | 'BIF';
+  currency: 'XOF' | 'XAF' | 'EUR' | 'GBP' | 'CHF' | 'MAD' | 'TND' | 'EGP' | 'GHS' | 'NGN' | 'KES' | 'MUR' | 'RWF' | 'ZAR' | 'UGX' | 'ZMW' | 'DZD' | 'AOA' | 'BWP' | 'CVE' | 'CDF' | 'ERN' | 'SZL' | 'ETB' | 'GMD' | 'GNF' | 'LRD' | 'LYD' | 'LSL' | 'MGA' | 'MWK' | 'MRU' | 'MZN' | 'NAD' | 'STN' | 'SCR' | 'SLE' | 'SOS' | 'SSP' | 'SDG' | 'TZS' | 'ZWL' | 'BIF' | 'DKK' | 'NOK' | 'PLN' | 'RON' | 'SEK';
   locale: string;
   cities: string[];
 }
@@ -22,7 +22,7 @@ export const countries: CountryInfo[] = [
   { name: 'Comores', dialCode: '+269', currency: 'XAF', locale: 'fr-FR', cities: ['Moroni', 'Mutsamudu', 'Fomboni'] },
   { name: 'Congo', dialCode: '+242', currency: 'XAF', locale: 'fr-FR', cities: ['Brazzaville', 'Pointe-Noire', 'Dolisie'] },
   { name: 'Côte d’Ivoire', dialCode: '+225', currency: 'XOF', locale: 'fr-FR', cities: ['Abidjan', 'Bouaké', 'Yamoussoukro', 'San-Pédro'] },
-  { name: 'Danemark', dialCode: '+45', currency: 'EUR', locale: 'da-DK', cities: ['Copenhague', 'Aarhus', 'Odense'] },
+  { name: 'Danemark', dialCode: '+45', currency: 'DKK', locale: 'da-DK', cities: ['Copenhague', 'Aarhus', 'Odense'] },
   { name: 'Djibouti', dialCode: '+253', currency: 'XAF', locale: 'fr-FR', cities: ['Djibouti', 'Ali Sabieh', 'Tadjourah'] },
   { name: 'Égypte', dialCode: '+20', currency: 'EGP', locale: 'ar-EG', cities: ['Le Caire', 'Alexandrie', 'Gizeh', 'Louxor'] },
   { name: 'Érythrée', dialCode: '+291', currency: 'ERN', locale: 'en-ER', cities: ['Asmara', 'Keren', 'Massawa'] },
@@ -55,14 +55,14 @@ export const countries: CountryInfo[] = [
   { name: 'Namibie', dialCode: '+264', currency: 'NAD', locale: 'en-NA', cities: ['Windhoek', 'Walvis Bay', 'Swakopmund'] },
   { name: 'Niger', dialCode: '+227', currency: 'XOF', locale: 'fr-FR', cities: ['Niamey', 'Maradi', 'Zinder', 'Agadez'] },
   { name: 'Nigeria', dialCode: '+234', currency: 'NGN', locale: 'en-NG', cities: ['Abuja', 'Lagos', 'Kano', 'Port Harcourt'] },
-  { name: 'Norvège', dialCode: '+47', currency: 'EUR', locale: 'nb-NO', cities: ['Oslo', 'Bergen', 'Trondheim'] },
+  { name: 'Norvège', dialCode: '+47', currency: 'NOK', locale: 'nb-NO', cities: ['Oslo', 'Bergen', 'Trondheim'] },
   { name: 'Ouganda', dialCode: '+256', currency: 'UGX', locale: 'en-UG', cities: ['Kampala', 'Entebbe', 'Jinja'] },
   { name: 'Pays-Bas', dialCode: '+31', currency: 'EUR', locale: 'nl-NL', cities: ['Amsterdam', 'Rotterdam', 'La Haye', 'Utrecht'] },
-  { name: 'Pologne', dialCode: '+48', currency: 'EUR', locale: 'pl-PL', cities: ['Varsovie', 'Cracovie', 'Wrocław'] },
+  { name: 'Pologne', dialCode: '+48', currency: 'PLN', locale: 'pl-PL', cities: ['Varsovie', 'Cracovie', 'Wrocław'] },
   { name: 'Portugal', dialCode: '+351', currency: 'EUR', locale: 'pt-PT', cities: ['Lisbonne', 'Porto', 'Braga', 'Coimbra'] },
   { name: 'République centrafricaine', dialCode: '+236', currency: 'XAF', locale: 'fr-FR', cities: ['Bangui', 'Bimbo', 'Berbérati'] },
   { name: 'République démocratique du Congo', dialCode: '+243', currency: 'CDF', locale: 'fr-CD', cities: ['Kinshasa', 'Lubumbashi', 'Goma'] },
-  { name: 'Roumanie', dialCode: '+40', currency: 'EUR', locale: 'ro-RO', cities: ['Bucarest', 'Cluj-Napoca', 'Timișoara'] },
+  { name: 'Roumanie', dialCode: '+40', currency: 'RON', locale: 'ro-RO', cities: ['Bucarest', 'Cluj-Napoca', 'Timișoara'] },
   { name: 'Royaume-Uni', dialCode: '+44', currency: 'GBP', locale: 'en-GB', cities: ['Londres', 'Manchester', 'Birmingham', 'Liverpool'] },
   { name: 'Rwanda', dialCode: '+250', currency: 'RWF', locale: 'fr-FR', cities: ['Kigali', 'Butare', 'Gisenyi'] },
   { name: 'Sao Tomé-et-Principe', dialCode: '+239', currency: 'STN', locale: 'pt-ST', cities: ['Sao Tomé', 'Santo António', 'Neves'] },
@@ -72,7 +72,7 @@ export const countries: CountryInfo[] = [
   { name: 'Somalie', dialCode: '+252', currency: 'SOS', locale: 'so-SO', cities: ['Mogadiscio', 'Hargeisa', 'Kismayo'] },
   { name: 'Soudan', dialCode: '+249', currency: 'SDG', locale: 'ar-SD', cities: ['Khartoum', 'Omdourman', 'Port-Soudan'] },
   { name: 'Soudan du Sud', dialCode: '+211', currency: 'SSP', locale: 'en-SS', cities: ['Djouba', 'Wau', 'Malakal'] },
-  { name: 'Suède', dialCode: '+46', currency: 'EUR', locale: 'sv-SE', cities: ['Stockholm', 'Göteborg', 'Malmö'] },
+  { name: 'Suède', dialCode: '+46', currency: 'SEK', locale: 'sv-SE', cities: ['Stockholm', 'Göteborg', 'Malmö'] },
   { name: 'Suisse', dialCode: '+41', currency: 'CHF', locale: 'fr-CH', cities: ['Berne', 'Genève', 'Zurich', 'Lausanne'] },
   { name: 'Tanzanie', dialCode: '+255', currency: 'TZS', locale: 'sw-TZ', cities: ['Dodoma', 'Dar es Salaam', 'Arusha'] },
   { name: 'Tchad', dialCode: '+235', currency: 'XAF', locale: 'fr-FR', cities: ['N’Djamena', 'Moundou', 'Abéché'] },
@@ -138,13 +138,33 @@ export function getPaymentMethods(countryName: string) {
   return [...(paymentMethodsByCountry[countryName] ?? []), 'Compte bancaire'];
 }
 
+const xofPerUnit: Record<CountryInfo['currency'], number> = {
+  XOF: 1, XAF: 1, EUR: 655.957, GBP: 770, CHF: 735, MAD: 67, TND: 210, EGP: 13.5,
+  GHS: 55, NGN: 0.42, KES: 4.25, MUR: 14.7, RWF: 0.48, ZAR: 36, UGX: 0.17, ZMW: 38,
+  DZD: 0.49, AOA: 0.72, BWP: 48, CVE: 6, CDF: 0.23, ERN: 43.7, SZL: 36, ETB: 5.2,
+  GMD: 8.8, GNF: 0.076, LRD: 0.07, LYD: 135, LSL: 36, MGA: 0.15, MWK: 0.44, MRU: 16.5,
+  MZN: 10.3, NAD: 36, STN: 31, SCR: 48, SLE: 0.09, SOS: 0.076, SSP: 0.44, SDG: 1.1,
+  TZS: 0.26, ZWL: 0.5, BIF: 0.23, DKK: 97.5, NOK: 57.5, PLN: 151, RON: 130, SEK: 62,
+};
+
+export function convertXofToLocal(amountXof: number, countryName: string): number {
+  const currency = getCountry(countryName)?.currency ?? 'XOF';
+  return amountXof / xofPerUnit[currency];
+}
+
+export function convertLocalToXof(amount: number, countryName: string): number {
+  const currency = getCountry(countryName)?.currency ?? 'XOF';
+  return amount * xofPerUnit[currency];
+}
+
+export function formatMoneyFromXof(amountXof: number, countryName: string): string {
+  const country = getCountry(countryName);
+  if (!country) return `${Math.round(amountXof).toLocaleString('fr-FR')} XOF`;
+  const amount = convertXofToLocal(amountXof, countryName);
+  return `${Math.round(amount).toLocaleString(country.locale)} ${country.currency}`;
+}
+
 export function formatPlanPrice(planName: string, countryName: string) {
   const plan = plans.find((item) => item.name === planName) ?? plans[0];
-  const country = getCountry(countryName);
-  if (!country || country.currency === 'XOF' || country.currency === 'XAF') return `${plan.fcfa.toLocaleString('fr-FR')} XOF`;
-  if (country.currency === 'EUR') return new Intl.NumberFormat(country.locale, { style: 'currency', currency: 'EUR' }).format(plan.euro);
-  if (country.currency === 'GBP') return new Intl.NumberFormat(country.locale, { style: 'currency', currency: 'GBP' }).format(plan.gbp);
-  if (country.currency === 'CHF') return new Intl.NumberFormat(country.locale, { style: 'currency', currency: 'CHF' }).format(plan.chf);
-  const converted = plan.euro * 655.957 / (country.currency === 'MAD' ? 10.8 : country.currency === 'TND' ? 3.4 : country.currency === 'EGP' ? 53 : 1);
-  return `${Math.round(converted).toLocaleString(country.locale)} ${country.currency}`;
+  return formatMoneyFromXof(plan.fcfa, countryName);
 }
