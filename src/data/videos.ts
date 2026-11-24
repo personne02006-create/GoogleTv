@@ -28,13 +28,21 @@ const maxVideoSize = 500 * 1024 * 1024;
 export async function fetchVideos(): Promise<VideoItem[]> {
   const { data, error } = await supabase
     .from('videos')
-    .select('id, title, channel_name, youtube_id, video_url, thumbnail_url')
-    .order('channel_name', { ascending: true })
-    .order('title', { ascending: true });
+    .select('id, title, channel_name, youtube_id, video_url, thumbnail_url, created_at')
+    .order('created_at', { ascending: true });
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((row) => ({
+  const rows = data ?? [];
+  const first15 = rows.slice(0, 15);
+  const rest = rows.slice(15);
+
+  for (let i = rest.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [rest[i], rest[j]] = [rest[j], rest[i]];
+  }
+
+  return [...first15, ...rest].map((row) => ({
     id: row.id,
     title: row.title,
     channelName: row.channel_name,
