@@ -10,7 +10,7 @@ interface VideoTabProps {
   activities: Record<string, Activity>;
   rewardAmount: number;
   countryName: string;
-  onActivity: (contentId: string, key: ActivityKey) => Promise<void>;
+  onActivity: (contentId: string, key: ActivityKey, forcedValue?: boolean) => Promise<void>;
   onWatched: (contentId: string) => Promise<void>;
 }
 
@@ -49,7 +49,7 @@ export default function VideoTab({ activities, rewardAmount, countryName, onActi
   </section>;
 }
 
-function VideoCard({ video, rewardAmount, countryName, isPlaying, onPlay, activity, onActivity }: { video: VideoItem; rewardAmount: number; countryName: string; isPlaying: boolean; onPlay: () => void; activity?: Activity; onActivity: (contentId: string, key: ActivityKey) => Promise<void> }) {
+function VideoCard({ video, rewardAmount, countryName, isPlaying, onPlay, activity, onActivity }: { video: VideoItem; rewardAmount: number; countryName: string; isPlaying: boolean; onPlay: () => void; activity?: Activity; onActivity: (contentId: string, key: ActivityKey, forcedValue?: boolean) => Promise<void> }) {
   const frenchTitle = video.title;
   const watched = Boolean(activity?.watched);
   const liked = Boolean(activity?.liked);
@@ -74,12 +74,12 @@ function VideoCard({ video, rewardAmount, countryName, isPlaying, onPlay, activi
         <VideoAction active={liked} activeClass="border-red-500/70 bg-red-500/10 text-red-400" label="J’aime" onClick={() => void onActivity(video.id, 'liked')}><ThumbsUp className="h-5 w-5" /></VideoAction>
         <VideoAction active={disliked} activeClass="border-slate-400/70 bg-slate-400/10 text-slate-200" label="Je n’aime pas" onClick={() => void onActivity(video.id, 'disliked')}><ThumbsDown className="h-5 w-5" /></VideoAction>
         <VideoAction active={favorited} activeClass="border-amber-400/70 bg-amber-400/10 text-amber-300" label="Favori" onClick={() => void onActivity(video.id, 'favorited')}><Bookmark className="h-5 w-5" fill={favorited ? 'currentColor' : 'none'} /></VideoAction>
-        <VideoAction active={watched} activeClass="border-green-400/70 bg-green-400/10 text-green-400" label="Vu" onClick={() => void onActivity(video.id, 'watched')}><CheckCircle2 className="h-5 w-5" /></VideoAction>
+        <VideoAction active={watched} disabled={!isPlaying || watched} activeClass="border-green-400/70 bg-green-400/10 text-green-400" label="Vu" onClick={() => { if (isPlaying && !watched) void onActivity(video.id, 'watched', true); }}><CheckCircle2 className="h-5 w-5" /></VideoAction>
       </div>
     </div>
   </article>;
 }
 
-function VideoAction({ active, activeClass, label, onClick, children }: { active: boolean; activeClass: string; label: string; onClick: () => void; children: ReactNode }) {
-  return <button onClick={onClick} className={`flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-xl border text-xs font-semibold transition sm:min-h-[76px] sm:text-sm ${active ? activeClass : 'border-white/10 bg-white/[.03] text-slate-400 hover:border-white/25 hover:text-white'}`}>{children}<span>{label}</span></button>;
+function VideoAction({ active, disabled = false, activeClass, label, onClick, children }: { active: boolean; disabled?: boolean; activeClass: string; label: string; onClick: () => void; children: ReactNode }) {
+  return <button onClick={onClick} disabled={disabled} className={`flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-xl border text-xs font-semibold transition sm:min-h-[76px] sm:text-sm ${active ? activeClass : 'border-white/10 bg-white/[.03] text-slate-400 hover:border-white/25 hover:text-white'} disabled:cursor-not-allowed disabled:opacity-50`}>{children}<span>{label}</span></button>;
 }

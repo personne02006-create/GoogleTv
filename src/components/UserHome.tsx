@@ -72,7 +72,8 @@ export default function UserHome({ profile, onSignOut }: UserHomeProps) {
   }, [profile.id, activities]);
 
   const updateActivity = async (contentId: string, key: ActivityKey, forcedValue?: boolean) => {
-    const current = activities[contentId] ?? { watched: false, liked: false, disliked: false, favorited: false };
+      const current = activities[contentId] ?? { watched: false, liked: false, disliked: false, favorited: false };
+    if (key === 'watched' && (current.watched || forcedValue !== true)) return;
     const next = { ...current, [key]: forcedValue ?? !current[key] };
     if (key === 'liked' && next.liked) next.disliked = false;
     if (key === 'disliked' && next.disliked) next.liked = false;

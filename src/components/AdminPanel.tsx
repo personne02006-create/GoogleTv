@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Banknote, Check, Clock3, Film, KeyRound, Loader2, LogOut, Search, ShieldCheck, UploadCloud, X } from 'lucide-react';
-import { createVideo, removeUploadedVideo, uploadVideoFile } from '@/data/videos';
+import { Banknote, Check, Clock3, KeyRound, LogOut, Search, ShieldCheck, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface PendingProfile {
@@ -117,7 +116,6 @@ export default function AdminPanel({ email, onSignOut }: AdminPanelProps) {
       {message && <p className="mt-5 rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">{message}</p>}
       {found ? <ProfileResult profile={found} working={workingId === found.id} onApprove={() => void updateStatus(found.id, 'approved')} onReject={() => void updateStatus(found.id, 'rejected')} onCertificationChange={(certified) => void updateCertification(found.id, certified)} onSuspensionChange={(suspended) => void updateSuspension(found.id, suspended)} onPaymentCodeSave={(code) => void updatePaymentCode(found.id, code)} /> : <div className="mt-10 rounded-2xl border border-white/10 bg-[#172236] p-10 text-center"><ShieldCheck className="mx-auto h-10 w-10 text-blue-300" /><p className="mt-4 text-lg font-semibold text-white">Aucun compte affiché</p><p className="mt-2 text-sm text-slate-400">Utilisez la recherche ci-dessus pour consulter un compte précis.</p></div>}
       <WithdrawalReviewSection />
-      <PublishVideoSection />
     </main>
   </div>;
 }
@@ -194,48 +192,6 @@ function WithdrawalReviewSection() {
     </div></article>}
     {error && <p className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>}
     {message && <p className="mt-5 rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">{message}</p>}
-  </section>;
-}
-
-function PublishVideoSection() {
-  const [title, setTitle] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [publishing, setPublishing] = useState(false);
-  const [publishError, setPublishError] = useState<string | null>(null);
-  const [publishMessage, setPublishMessage] = useState<string | null>(null);
-
-  const publish = async () => {
-    if (!title.trim()) { setPublishError('Saisissez un titre pour la vidéo.'); setPublishMessage(null); return; }
-    if (!file) { setPublishError('Choisissez un fichier vidéo à publier.'); setPublishMessage(null); return; }
-
-    setPublishing(true);
-    setPublishError(null);
-    setPublishMessage(null);
-    let uploadedPath: string | null = null;
-    try {
-      const uploaded = await uploadVideoFile(file);
-      uploadedPath = uploaded.path;
-      await createVideo({ title: title.trim(), videoUrl: uploaded.publicUrl });
-      setTitle('');
-      setFile(null);
-      setPublishMessage('La vidéo a été publiée. Elle est maintenant disponible dans l’onglet Vidéos.');
-    } catch (err) {
-      if (uploadedPath) await removeUploadedVideo(uploadedPath);
-      const detail = err instanceof Error ? err.message : '';
-      setPublishError(detail ? `La publication a échoué : ${detail}` : 'La publication a échoué. Vérifiez le fichier et réessayez.');
-    } finally {
-      setPublishing(false);
-    }
-  };
-
-  return <section className="mt-12 rounded-2xl border border-white/10 bg-[#172236] p-5 sm:p-7">
-    <div className="flex items-center gap-3"><UploadCloud className="h-6 w-6 text-blue-300" /><h2 className="text-2xl font-black text-white">Publier une vidéo</h2></div>
-    <p className="mt-2 text-sm text-slate-400">Ajoutez vos propres fichiers vidéo.</p>
-    <label className="mt-6 block"><span className="mb-3 block text-sm font-bold uppercase tracking-[.1em] text-slate-300">Titre de la vidéo</span><input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ex : Ma nouvelle vidéo" className="form-input" /></label>
-    <label className="mt-5 block"><span className="mb-3 block text-sm font-bold uppercase tracking-[.1em] text-slate-300">Fichier vidéo</span><div className="flex items-center gap-3 rounded-xl border border-dashed border-white/20 bg-[#0b1524] px-4 py-4"><Film className="h-6 w-6 flex-none text-blue-300" /><input type="file" accept="video/mp4,video/webm,video/quicktime,video/ogg" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="w-full text-sm text-slate-300 file:mr-4 file:rounded-xl file:border-0 file:bg-blue-500 file:px-4 file:py-2 file:text-sm file:font-bold file:text-white hover:file:bg-blue-400" /></div><span className="mt-2 block text-xs text-slate-500">Formats acceptés : MP4, WebM, MOV et OGG, jusqu’à 500 Mo.</span></label>
-    {publishError && <p className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{publishError}</p>}
-    {publishMessage && <p className="mt-5 rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">{publishMessage}</p>}
-    <button onClick={() => void publish()} disabled={publishing} className="primary-button mt-6 inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 font-bold disabled:opacity-60">{publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />} {publishing ? 'Publication en cours…' : 'Publier la vidéo'}</button>
   </section>;
 }
 
