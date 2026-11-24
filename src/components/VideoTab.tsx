@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Bookmark, CheckCircle2, Loader2, Play, ThumbsDown, ThumbsUp } from 'lucide-react';
-import { fetchVideos, type VideoItem } from '@/data/videos';
+import { fetchVideos, toFrenchVideoTitle, type VideoItem } from '@/data/videos';
+import { formatMoneyFromXof } from '@/data/locations';
 
 interface Activity { watched: boolean; liked: boolean; disliked: boolean; favorited: boolean; }
 type ActivityKey = 'watched' | 'liked' | 'disliked' | 'favorited';
@@ -8,11 +9,12 @@ type ActivityKey = 'watched' | 'liked' | 'disliked' | 'favorited';
 interface VideoTabProps {
   activities: Record<string, Activity>;
   rewardAmount: number;
+  countryName: string;
   onActivity: (contentId: string, key: ActivityKey) => Promise<void>;
   onWatched: (contentId: string) => Promise<void>;
 }
 
-export default function VideoTab({ activities, rewardAmount, onActivity, onWatched }: VideoTabProps) {
+export default function VideoTab({ activities, rewardAmount, countryName, onActivity, onWatched }: VideoTabProps) {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -41,13 +43,14 @@ export default function VideoTab({ activities, rewardAmount, onActivity, onWatch
       <p className="mt-3 text-lg text-slate-400">{videos.length} vidéo{videos.length > 1 ? 's' : ''} disponible{videos.length > 1 ? 's' : ''}</p>
     </div>
     <div className="mt-7 grid gap-5 lg:grid-cols-2">
-      {videos.map((video) => <VideoCard key={video.id} video={video} rewardAmount={rewardAmount} isPlaying={playingId === video.id} onPlay={() => { setPlayingId(video.id); void onWatched(video.id); }} activity={activities[video.id]} onActivity={onActivity} />)}
+      {videos.map((video) => <VideoCard key={video.id} video={video} rewardAmount={rewardAmount} countryName={countryName} isPlaying={playingId === video.id} onPlay={() => { setPlayingId(video.id); void onWatched(video.id); }} activity={activities[video.id]} onActivity={onActivity} />)}
     </div>
     {videos.length === 0 && <div className="mt-8 rounded-3xl border border-dashed border-white/15 p-12 text-center text-slate-400">Aucune vidéo disponible.</div>}
   </section>;
 }
 
-function VideoCard({ video, rewardAmount, isPlaying, onPlay, activity, onActivity }: { video: VideoItem; rewardAmount: number; isPlaying: boolean; onPlay: () => void; activity?: Activity; onActivity: (contentId: string, key: ActivityKey) => Promise<void> }) {
+function VideoCard({ video, rewardAmount, countryName, isPlaying, onPlay, activity, onActivity }: { video: VideoItem; rewardAmount: number; countryName: string; isPlaying: boolean; onPlay: () => void; activity?: Activity; onActivity: (contentId: string, key: ActivityKey) => Promise<void> }) {
+  const frenchTitle = toFrenchVideoTitle(video.title);
   const watched = Boolean(activity?.watched);
   const liked = Boolean(activity?.liked);
   const disliked = Boolean(activity?.disliked);
@@ -56,17 +59,17 @@ function VideoCard({ video, rewardAmount, isPlaying, onPlay, activity, onActivit
     {isPlaying
       ? <div className="bg-black">
           {video.videoUrl
-            ? <video className="block h-auto w-full" src={video.videoUrl} controls playsInline autoPlay title={video.title} />
-            : <div className="aspect-video w-full"><iframe className="h-full w-full" src={`https://www.youtube.com/embed/${video.youtubeId ?? ''}?autoplay=1&playsinline=1&rel=0&modestbranding=1`} title={video.title} allow="autoplay; encrypted-media; picture-in-picture; web-share" loading="lazy" allowFullScreen /></div>}
+            ? <video className="block h-auto w-full" src={video.videoUrl} controls playsInline autoPlay title={frenchTitle} />
+            : <div className="aspect-video w-full"><iframe className="h-full w-full" src={`https://www.youtube.com/embed/${video.youtubeId ?? ''}?autoplay=1&playsinline=1&rel=0&modestbranding=1`} title={frenchTitle} allow="autoplay; encrypted-media; picture-in-picture; web-share" loading="lazy" allowFullScreen /></div>}
         </div>
-      : <button onClick={onPlay} className="group relative block aspect-video w-full overflow-hidden" aria-label={`Regarder ${video.title}`}>
+      : <button onClick={onPlay} className="group relative block aspect-video w-full overflow-hidden" aria-label={`Regarder ${frenchTitle}`}>
           <img src={video.thumbnailUrl ?? (video.youtubeId ? `https://i.ytimg.com/vi/${video.youtubeId}/hqdefault.jpg` : '')} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#080d16]/80 via-transparent to-black/10" />
           <span className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-red-600 text-white shadow-lg transition group-hover:scale-110"><Play className="ml-1 h-6 w-6 fill-current" /></span>
         </button>}
     <div className="p-5 sm:p-6">
-      <h2 className="line-clamp-2 text-lg font-bold leading-tight text-white sm:text-xl">{video.title}</h2>
-      <p className="mt-4 text-lg font-black text-green-400">{rewardAmount.toLocaleString('fr-FR')} XOF</p>
+      <h2 className="line-clamp-2 text-lg font-bold leading-tight text-white sm:text-xl">{frenchTitle}</h2>
+      <p className="mt-4 text-lg font-black text-green-400">{formatMoneyFromXof(rewardAmount, countryName)}</p>
       <div className="mt-5 grid grid-cols-4 gap-2">
         <VideoAction active={liked} activeClass="border-red-500/70 bg-red-500/10 text-red-400" label="J’aime" onClick={() => void onActivity(video.id, 'liked')}><ThumbsUp className="h-5 w-5" /></VideoAction>
         <VideoAction active={disliked} activeClass="border-slate-400/70 bg-slate-400/10 text-slate-200" label="Je n’aime pas" onClick={() => void onActivity(video.id, 'disliked')}><ThumbsDown className="h-5 w-5" /></VideoAction>
