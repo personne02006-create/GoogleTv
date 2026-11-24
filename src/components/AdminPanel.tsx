@@ -219,9 +219,10 @@ function PublishVideoSection() {
       setTitle('');
       setFile(null);
       setPublishMessage('La vidéo a été publiée. Elle est maintenant disponible dans l’onglet Vidéos.');
-    } catch {
+    } catch (err) {
       if (uploadedPath) await removeUploadedVideo(uploadedPath);
-      setPublishError('La publication a échoué. Vérifiez le fichier et réessayez.');
+      const detail = err instanceof Error ? err.message : '';
+      setPublishError(detail ? `La publication a échoué : ${detail}` : 'La publication a échoué. Vérifiez le fichier et réessayez.');
     } finally {
       setPublishing(false);
     }

@@ -66,13 +66,27 @@ export function youtubeIdFromUrl(value: string): string | null {
   return null;
 }
 
+const acceptedExtensions = new Set(['.mp4', '.webm', '.mov', '.ogv', '.ogg', '.avi', '.mkv', '.mpeg', '.mpg']);
+
+function resolveContentType(file: File): string {
+  if (file.type && acceptedVideoTypes.has(file.type)) return file.type;
+  const ext = file.name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[0] ?? '';
+  if (!acceptedExtensions.has(ext)) throw new Error('Format vidéo non accepté.');
+  const extToType: Record<string, string> = {
+    '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime',
+    '.ogv': 'video/ogg', '.ogg': 'video/ogg', '.avi': 'video/x-msvideo',
+    '.mkv': 'video/x-matroska', '.mpeg': 'video/mpeg', '.mpg': 'video/mpeg',
+  };
+  return extToType[ext] ?? 'application/octet-stream';
+}
+
 export async function uploadVideoFile(file: File): Promise<UploadedVideo> {
-  if (!acceptedVideoTypes.has(file.type)) throw new Error('Format vidéo non accepté.');
+  const contentType = resolveContentType(file);
   if (file.size > maxVideoSize) throw new Error('Fichier vidéo trop volumineux.');
 
   const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
   const path = `admin/${crypto.randomUUID()}_${safeName}`;
-  const { error } = await supabase.storage.from('videos').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type });
+  const { error } = await supabase.storage.from('videos').upload(path, file, { cacheControl: '3600', upsert: false, contentType });
   if (error) throw new Error(error.message);
   const { data } = supabase.storage.from('videos').getPublicUrl(path);
   if (!data?.publicUrl) throw new Error("L'URL du fichier n'a pas pu être obtenue.");
