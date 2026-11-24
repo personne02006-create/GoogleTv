@@ -28,8 +28,9 @@ const maxVideoSize = 500 * 1024 * 1024;
 export async function fetchVideos(): Promise<VideoItem[]> {
   const { data, error } = await supabase
     .from('videos')
-    .select('id, title, channel_name, youtube_id, video_url, thumbnail_url, display_order')
-    .order('display_order', { ascending: true });
+    .select('id, title, channel_name, youtube_id, video_url, thumbnail_url')
+    .order('channel_name', { ascending: true })
+    .order('title', { ascending: true });
 
   if (error) throw new Error(error.message);
 
