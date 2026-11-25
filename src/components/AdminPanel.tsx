@@ -137,33 +137,20 @@ interface PendingWithdrawal {
 }
 
 function WithdrawalReviewSection() {
-  const [identifier, setIdentifier] = useState('');
-  const [request, setRequest] = useState<PendingWithdrawal | null>(null);
-  const [searching, setSearching] = useState(false);
+  const [requests, setRequests] = useState<PendingWithdrawal[] | null>(null);
   const [workingId, setWorkingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const searchRequest = async () => {
-    if (!identifier.trim()) {
-      setError('Saisissez le numéro d’identification de la demande.');
-      setRequest(null);
-      return;
-    }
-    setSearching(true);
-    setError(null);
-    setMessage(null);
-    const { data, error: searchError } = await supabase.rpc('find_pending_withdrawal_by_identifier', { p_identifier: identifier.trim() });
-    setSearching(false);
-    if (searchError) {
-      setError('La recherche de la demande n’a pas pu être effectuée.');
-      setRequest(null);
-      return;
-    }
-    const result = (data?.[0] ?? null) as PendingWithdrawal | null;
-    setRequest(result);
-    if (!result) setError('Aucune demande de retrait en attente pour cet identifiant.');
-  };
+  useEffect(() => {
+    let mounted = true;
+    void supabase.rpc('get_pending_withdrawals').then(({ data, error: loadError }) => {
+      if (!mounted) return;
+      if (loadError) { setError('Les demandes de retrait n’ont pas pu être chargées.'); return; }
+      setRequests((data ?? []) as PendingWithdrawal[]);
+    });
+    return () => { mounted = false; };
+  }, []);
 
   const review = async (requestId: string, status: 'approved' | 'rejected') => {
     setWorkingId(requestId);
@@ -172,15 +159,14 @@ function WithdrawalReviewSection() {
     const { error: reviewError } = await supabase.rpc('review_withdrawal_request', { p_request_id: requestId, p_status: status });
     setWorkingId(null);
     if (reviewError) { setError('La demande n’a pas pu être traitée.'); return; }
-    setRequest(null);
+    setRequests((current) => (current ?? []).filter((request) => request.request_id !== requestId));
     setMessage(status === 'approved' ? 'Le retrait a été accepté.' : 'Le retrait a été refusé.');
   };
 
   return <section className="mt-12 rounded-2xl border border-white/10 bg-[#172236] p-5 sm:p-7">
-    <div className="flex items-center gap-3"><Banknote className="h-6 w-6 text-blue-300" /><h2 className="text-2xl font-black text-white">Confirmer un retrait</h2></div>
-    <p className="mt-2 text-sm text-slate-400">Recherchez l’identifiant pour afficher une demande et la traiter.</p>
-    <div className="mt-6 flex flex-col gap-3 sm:flex-row"><input value={identifier} onChange={(event) => setIdentifier(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void searchRequest(); }} placeholder="ID-22984756320187" className="form-input" /><button onClick={() => void searchRequest()} disabled={searching} className="primary-button inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 font-bold disabled:opacity-60"><Search className="h-4 w-4" /> {searching ? 'Recherche…' : 'Rechercher la demande'}</button></div>
-    {request && <article className="mt-6 rounded-2xl border border-blue-400/20 bg-[#0b1524] p-5"><div className="grid gap-4 sm:grid-cols-2">
+    <div className="flex items-center gap-3"><Banknote className="h-6 w-6 text-blue-300" /><h2 className="text-2xl font-black text-white">Demandes de retrait</h2></div>
+    <p className="mt-2 text-sm text-slate-400">Toutes les demandes en attente sont visibles par chaque administrateur.</p>
+    {requests === null ? <div className="mt-6 flex items-center gap-2 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin text-blue-300" /> Chargement des demandes…</div> : requests.length === 0 ? <p className="mt-6 text-sm text-slate-400">Aucune demande de retrait en attente.</p> : <div className="mt-6 space-y-5">{requests.map((request) => <article key={request.request_id} className="rounded-2xl border border-blue-400/20 bg-[#0b1524] p-5"><div className="grid gap-4 sm:grid-cols-2">
       <div><p className="text-xs uppercase tracking-wider text-slate-500">Bénéficiaire</p><p className="mt-1 font-bold text-white">{request.first_name} {request.last_name}</p><p className="mt-1 text-sm font-semibold text-blue-300">{request.identifier}</p></div>
       <div><p className="text-xs uppercase tracking-wider text-slate-500">Montant</p><p className="mt-1 text-xl font-black text-green-300">{Number(request.amount).toLocaleString('fr-FR')} XOF</p></div>
       <div><p className="text-xs uppercase tracking-wider text-slate-500">Moyen de paiement</p><p className="mt-1 text-slate-200">{request.payment_method}</p></div>
@@ -190,7 +176,7 @@ function WithdrawalReviewSection() {
     </div><div className="mt-5 grid gap-3 sm:grid-cols-2">
       <button disabled={workingId === request.request_id} onClick={() => void review(request.request_id, 'rejected')} className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-400/30 px-4 py-3 text-sm font-bold text-red-200 hover:bg-red-500/10 disabled:opacity-50"><X className="h-4 w-4" /> Refuser le retrait</button>
       <button disabled={workingId === request.request_id} onClick={() => void review(request.request_id, 'approved')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-500 disabled:opacity-50"><Check className="h-4 w-4" /> Accepter le retrait</button>
-    </div></article>}
+    </div></article>)}</div>}
     {error && <p className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>}
     {message && <p className="mt-5 rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">{message}</p>}
   </section>;
