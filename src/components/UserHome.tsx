@@ -167,7 +167,7 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
 
   const [updateCode, setUpdateCode] = useState('');
   const [updateError, setUpdateError] = useState<string | null>(null);
-  const [latestRequest, setLatestRequest] = useState<{ id: string; status: string; amount: number; dismissedAt: boolean } | null>(null);
+  const [latestRequest, setLatestRequest] = useState<{ id: string; status: string; amount: number; dismissedAt: boolean; acknowledgedAt: boolean } | null>(null);
   const [dismissedLatest, setDismissedLatest] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const [committedAmount, setCommittedAmount] = useState(0);
@@ -197,7 +197,7 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
 
   useEffect(() => {
     let mounted = true;
-    void supabase.from('withdrawal_requests').select('id, amount, status, dismissed_at, created_at').eq('user_id', profile.id).order('created_at', { ascending: false }).then(({ data, error }) => {
+    void supabase.from('withdrawal_requests').select('id, amount, status, dismissed_at, acknowledged_at, created_at').eq('user_id', profile.id).order('created_at', { ascending: false }).then(({ data, error }) => {
       if (!mounted) return;
       if (error) {
         setBalanceReady(false);
@@ -206,7 +206,7 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
       }
       const rows = data ?? [];
       setCommittedAmount(rows.filter((row) => row.status === 'pending' || row.status === 'approved').reduce((total, row) => total + Number(row.amount), 0));
-      const nextRequest = rows.length > 0 ? { id: String(rows[0].id), status: String(rows[0].status), amount: Number(rows[0].amount), dismissedAt: Boolean(rows[0].dismissed_at) } : null;
+      const nextRequest = rows.length > 0 ? { id: String(rows[0].id), status: String(rows[0].status), amount: Number(rows[0].amount), dismissedAt: Boolean(rows[0].dismissed_at), acknowledgedAt: Boolean(rows[0].acknowledged_at) } : null;
       setLatestRequest(nextRequest);
       setBalanceReady(true);
     });
@@ -439,6 +439,22 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
     setSubmitting(false);
   };
 
+  const acknowledgeApprovedWithdrawal = async (): Promise<void> => {
+    if (!latestRequest?.id) return;
+    setDismissedLatest(true);
+    const { error } = await supabase.rpc('acknowledge_withdrawal_approval', { p_request_id: latestRequest.id });
+    if (error) {
+      setDismissedLatest(false);
+      setErrorMessage('Votre demande n’a pas pu être confirmée. Réessayez.');
+      return;
+    }
+    setDismissedLatest(false);
+    setLatestRequest((current) => (current ? { ...current, acknowledgedAt: true } : current));
+    setAmount('');
+    setWithdrawalCode('');
+    setHasCodeBypass(true);
+  };
+
   const dismissRejectedWithdrawal = async (): Promise<void> => {
     if (!latestRequest?.id) return;
     setDismissedLatest(true);
@@ -457,7 +473,7 @@ function WithdrawalTab({ profile, counts, rewardAmount }: { profile: UserHomePro
 
   if (latestRequest && !dismissedLatest && !latestRequest.dismissedAt && latestRequest.status === 'rejected') return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-red-400/30 bg-[#241318] p-8 text-center shadow-2xl sm:p-12"><XCircle className="mx-auto h-12 w-12 text-red-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre retrait a échoué, veuillez réessayer</h1><button onClick={() => { void dismissRejectedWithdrawal(); }} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Réessayer</button></div></section>;
 
-  if (latestRequest && !dismissedLatest && latestRequest.status === 'approved') return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-green-400/30 bg-[#12241a] p-8 text-center shadow-2xl sm:p-12"><CheckCircle2 className="mx-auto h-12 w-12 text-green-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre retrait a été effectué avec succès</h1><p className="mt-4 leading-7 text-slate-300">Votre demande de <b>{formatMoneyFromXof(latestRequest.amount, withdrawalCountry)}</b> a été validée avec succès.</p></div></section>;
+  if (latestRequest && !dismissedLatest && latestRequest.status === 'approved' && !latestRequest.acknowledgedAt) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-green-400/30 bg-[#12241a] p-8 text-center shadow-2xl sm:p-12"><CheckCircle2 className="mx-auto h-12 w-12 text-green-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre retrait a été effectué avec succès</h1><p className="mt-4 leading-7 text-slate-300">Votre demande de <b>{formatMoneyFromXof(latestRequest.amount, withdrawalCountry)}</b> a été validée avec succès.</p><button onClick={() => { void acknowledgeApprovedWithdrawal(); }} className="primary-button mt-8 rounded-xl px-8 py-3 font-bold">Ok</button></div></section>;
 
   if (certificationBlocked) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><img src="/assets/icons/file_00000000f4308210a788b98916b52e8e.png" alt="Compte certifié" className="mx-auto h-16 w-16 object-contain" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Votre compte n'est pas autorisé à effectuer un retrait.</h1><p className="mt-4 leading-7 text-slate-300">La certification de votre compte est requise.</p><p className="mt-3 text-sm text-slate-400">Coût : <b>{formatMoneyFromXof(35580, profile.country ?? '')}</b></p>{!certChecked ? <div className="mt-8"><Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-400" /><p className="mt-4 text-sm text-slate-400">Vérification de votre certification…</p></div> : certifiedNow ? <button onClick={() => { setCertificationBlocked(false); setHostingCode(''); setHostingError(null); setHostingStep(true); }} className="primary-button mt-8 rounded-xl px-6 py-3 font-bold">Continuer</button> : <div><button disabled className="mt-5 cursor-not-allowed rounded-xl px-6 py-3 font-bold opacity-50">Continuer</button></div>}</div></section>;
 
