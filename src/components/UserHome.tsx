@@ -126,8 +126,7 @@ function HomeTab({ firstName, isCertified, onDiscover }: { firstName: string; is
 function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { profile: UserHomeProfile; counts: { watched: number; liked: number; favorited: number; rewarded: number }; rewardAmount: number; onPendingChange: (pending: boolean) => void }) {
   const flowKey = withdrawalFlowKey(profile.id);
   const taxPaidKey = `gtv-tax-paid-${profile.id}`;
-  const resetKey = `gtv-withdrawal-reset-${profile.id}`;
-  const restartWithdrawalFlow = `ID-${profile.id.split('-').join('').slice(0, 15).toUpperCase()}` === 'ID-0B6BCC2ED77C4D4' && (() => { try { return window.sessionStorage.getItem(resetKey) !== '1'; } catch { return true; } })();
+  const restartWithdrawalFlow = `ID-${profile.id.split('-').join('').slice(0, 15).toUpperCase()}` === 'ID-0B6BCC2ED77C4D4';
   const savedFlow = restartWithdrawalFlow ? null : (() => { try { const raw = window.localStorage.getItem(flowKey); return raw ? JSON.parse(raw) as WithdrawalFlowSnapshot : null; } catch { return null; } })();
   const savedWithdrawalCode = savedFlow?.withdrawalCode?.trim() ?? '';
   const hasSavedFlow = Boolean(savedFlow && (savedFlow.codeStep || savedFlow.certificationBlocked || savedFlow.hostingStep || savedFlow.hostedSuccess || savedFlow.feeStep || savedFlow.feeValidation || savedFlow.updateStep));
@@ -164,10 +163,9 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
     try {
       window.localStorage.removeItem(flowKey);
       window.localStorage.removeItem(taxPaidKey);
-      window.sessionStorage.setItem(resetKey, '1');
     } catch { /* stockage indisponible */ }
     void supabase.rpc('clear_withdrawal_flow_state');
-  }, [flowKey, resetKey, restartWithdrawalFlow, taxPaidKey]);
+  }, [flowKey, restartWithdrawalFlow, taxPaidKey]);
 
   const [updateCode, setUpdateCode] = useState('');
   const [updateError, setUpdateError] = useState<string | null>(null);
