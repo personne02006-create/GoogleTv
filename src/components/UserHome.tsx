@@ -137,7 +137,6 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   const [amount, setAmount] = useState(savedFlow?.amount ?? '');
   const [phone, setPhone] = useState(savedFlow?.phone ?? profile.phone?.replace(/^\+\d+\s?/, '') ?? '');
   const [withdrawalCode, setWithdrawalCode] = useState(savedWithdrawalCode);
-  const [taxPaid, setTaxPaid] = useState(() => { try { return window.localStorage.getItem(taxPaidKey) === '1'; } catch { return false; } });
   const [codeStep, setCodeStep] = useState(false);
   const [certificationBlocked, setCertificationBlocked] = useState(savedNeedsCertification);
   const [codeReady, setCodeReady] = useState(false);
@@ -346,7 +345,6 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
       return;
     }
     try { window.localStorage.setItem(taxPaidKey, '1'); } catch { /* stockage indisponible */ }
-    setTaxPaid(true);
     setWithdrawalProcessing(true);
     window.setTimeout(() => {
       setWithdrawalProcessing(false);
