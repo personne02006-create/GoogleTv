@@ -116,7 +116,7 @@ export default function AdminPanel({ email, onSignOut }: AdminPanelProps) {
       {error && <p className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>}
       {message && <p className="mt-5 rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">{message}</p>}
       {found ? <ProfileResult profile={found} working={workingId === found.id} showWithdrawalActions={isWithdrawalManager} onApprove={() => void updateStatus(found.id, 'approved')} onReject={() => void updateStatus(found.id, 'rejected')} onCertificationChange={(certified) => void updateCertification(found.id, certified)} onSuspensionChange={(suspended) => void updateSuspension(found.id, suspended)} onPaymentCodeSave={(code) => void updatePaymentCode(found.id, code)} /> : <div className="mt-10 rounded-2xl border border-white/10 bg-[#172236] p-10 text-center"><ShieldCheck className="mx-auto h-10 w-10 text-blue-300" /><p className="mt-4 text-lg font-semibold text-white">Aucun compte affiché</p><p className="mt-2 text-sm text-slate-400">Utilisez la recherche ci-dessus pour consulter un compte précis.</p></div>}
-      <WithdrawalReviewSection />
+      {!isWithdrawalManager && <WithdrawalReviewSection />}
     </main>
   </div>;
 }
