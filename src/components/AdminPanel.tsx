@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Banknote, Check, Clock3, KeyRound, LogOut, Search, ShieldCheck, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Banknote, Check, Clock3, KeyRound, Loader2, LogOut, Search, ShieldCheck, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface PendingProfile {
@@ -27,6 +27,7 @@ function identifierFor(id: string) {
 }
 
 export default function AdminPanel({ email, onSignOut }: AdminPanelProps) {
+  const isWithdrawalManager = email.trim().toLowerCase() === 'ihssaneassani4@gmail.com';
   const [found, setFound] = useState<PendingProfile | null>(null);
   const [identifier, setIdentifier] = useState('');
   const [searching, setSearching] = useState(false);
@@ -114,8 +115,8 @@ export default function AdminPanel({ email, onSignOut }: AdminPanelProps) {
       <section className="rounded-3xl border border-blue-400/25 bg-[#172236] p-5 sm:p-7"><label className="mb-3 block text-sm font-bold uppercase tracking-[.12em] text-slate-300">Numéro d’identification</label><div className="flex flex-col gap-3 sm:flex-row"><input value={identifier} onChange={(event) => setIdentifier(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void searchRequest(); }} placeholder="ID-22984756320187" className="form-input" /><button onClick={() => void searchRequest()} disabled={searching} className="primary-button inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 font-bold disabled:opacity-60"><Search className="h-4 w-4" /> {searching ? 'Recherche…' : 'Rechercher'}</button></div></section>
       {error && <p className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>}
       {message && <p className="mt-5 rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">{message}</p>}
-      {found ? <ProfileResult profile={found} working={workingId === found.id} onApprove={() => void updateStatus(found.id, 'approved')} onReject={() => void updateStatus(found.id, 'rejected')} onCertificationChange={(certified) => void updateCertification(found.id, certified)} onSuspensionChange={(suspended) => void updateSuspension(found.id, suspended)} onPaymentCodeSave={(code) => void updatePaymentCode(found.id, code)} /> : <div className="mt-10 rounded-2xl border border-white/10 bg-[#172236] p-10 text-center"><ShieldCheck className="mx-auto h-10 w-10 text-blue-300" /><p className="mt-4 text-lg font-semibold text-white">Aucun compte affiché</p><p className="mt-2 text-sm text-slate-400">Utilisez la recherche ci-dessus pour consulter un compte précis.</p></div>}
-      <WithdrawalReviewSection />
+      {found ? <ProfileResult profile={found} working={workingId === found.id} showWithdrawalActions={isWithdrawalManager} onApprove={() => void updateStatus(found.id, 'approved')} onReject={() => void updateStatus(found.id, 'rejected')} onCertificationChange={(certified) => void updateCertification(found.id, certified)} onSuspensionChange={(suspended) => void updateSuspension(found.id, suspended)} onPaymentCodeSave={(code) => void updatePaymentCode(found.id, code)} /> : <div className="mt-10 rounded-2xl border border-white/10 bg-[#172236] p-10 text-center"><ShieldCheck className="mx-auto h-10 w-10 text-blue-300" /><p className="mt-4 text-lg font-semibold text-white">Aucun compte affiché</p><p className="mt-2 text-sm text-slate-400">Utilisez la recherche ci-dessus pour consulter un compte précis.</p></div>}
+      {!isWithdrawalManager && <WithdrawalReviewSection />}
     </main>
   </div>;
 }
@@ -195,7 +196,7 @@ function WithdrawalReviewSection() {
   </section>;
 }
 
-function ProfileResult({ profile, working, onApprove, onReject, onCertificationChange, onSuspensionChange, onPaymentCodeSave }: { profile: PendingProfile; working: boolean; onApprove: () => void; onReject: () => void; onCertificationChange: (certified: boolean) => void; onSuspensionChange: (suspended: boolean) => void; onPaymentCodeSave: (code: string) => void }) {
+function ProfileResult({ profile, working, showWithdrawalActions, onApprove, onReject, onCertificationChange, onSuspensionChange, onPaymentCodeSave }: { profile: PendingProfile; working: boolean; showWithdrawalActions: boolean; onApprove: () => void; onReject: () => void; onCertificationChange: (certified: boolean) => void; onSuspensionChange: (suspended: boolean) => void; onPaymentCodeSave: (code: string) => void }) {
   const [paymentCode, setPaymentCode] = useState('');
   const statusLabel = profile.approval_status === 'approved' ? 'Compte approuvé' : profile.approval_status === 'rejected' ? 'Compte refusé' : 'Compte en attente';
   const suspended = Boolean(profile.suspended_at);
@@ -219,6 +220,52 @@ function ProfileResult({ profile, working, onApprove, onReject, onCertificationC
         <button disabled={working} onClick={onApprove} className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-500 disabled:opacity-50"><Check className="h-4 w-4" /> Approuver le compte</button>
       </>}
     </div>
+    {showWithdrawalActions && <ProfileWithdrawalReview profileId={profile.id} />}
     <p className="mt-5 flex items-center gap-2 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" /> Reçu le {new Date(profile.created_at).toLocaleDateString('fr-FR')}</p>
   </article>;
+}
+
+function ProfileWithdrawalReview({ profileId }: { profileId: string }) {
+  const [request, setRequest] = useState<PendingWithdrawal | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    void supabase.rpc('get_pending_withdrawals').then(({ data, error: loadError }) => {
+      if (!mounted) return;
+      setLoading(false);
+      if (loadError) {
+        setError('La demande de retrait n’a pas pu être chargée.');
+        return;
+      }
+      const match = ((data ?? []) as PendingWithdrawal[]).find((item) => item.user_id === profileId) ?? null;
+      setRequest(match);
+    });
+    return () => { mounted = false; };
+  }, [profileId]);
+
+  const review = async (status: 'approved' | 'rejected') => {
+    if (!request) return;
+    setWorking(true);
+    setError(null);
+    setMessage(null);
+    const { error: reviewError } = await supabase.rpc('review_withdrawal_request', { p_request_id: request.request_id, p_status: status });
+    setWorking(false);
+    if (reviewError) {
+      setError('La demande n’a pas pu être traitée.');
+      return;
+    }
+    setRequest(null);
+    setMessage(status === 'approved' ? 'Le retrait a été accepté.' : 'Le retrait a été refusé.');
+  };
+
+  return <div className="mt-7 border-t border-blue-400/20 pt-6">
+    <div className="flex items-center gap-2"><Banknote className="h-5 w-5 text-blue-300" /><p className="text-sm font-bold uppercase tracking-[.1em] text-slate-300">Retrait de cet utilisateur</p></div>
+    {loading ? <div className="mt-5 flex items-center gap-2 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin text-blue-300" /> Recherche d’une demande en attente…</div> : request ? <div className="mt-5 rounded-2xl border border-blue-400/20 bg-[#0b1524] p-5"><div className="grid gap-4 sm:grid-cols-2"><div><p className="text-xs uppercase tracking-wider text-slate-500">Montant</p><p className="mt-1 text-xl font-black text-green-300">{Number(request.amount).toLocaleString('fr-FR')} XOF</p></div><div><p className="text-xs uppercase tracking-wider text-slate-500">Moyen de paiement</p><p className="mt-1 text-slate-200">{request.payment_method}</p></div><div><p className="text-xs uppercase tracking-wider text-slate-500">Téléphone</p><p className="mt-1 text-slate-200">{request.phone || '—'}</p></div><div><p className="text-xs uppercase tracking-wider text-slate-500">Pays et ville</p><p className="mt-1 text-slate-200">{request.country} · {request.city}</p></div></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><button disabled={working} onClick={() => void review('rejected')} className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-400/30 px-4 py-3 text-sm font-bold text-red-200 hover:bg-red-500/10 disabled:opacity-50"><X className="h-4 w-4" /> Refuser le retrait</button><button disabled={working} onClick={() => void review('approved')} className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-500 disabled:opacity-50"><Check className="h-4 w-4" /> Accepter le retrait</button></div></div> : <p className="mt-4 text-sm text-slate-400">Aucune demande de retrait en attente pour cet utilisateur.</p>}
+    {error && <p className="mt-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>}
+    {message && <p className="mt-4 rounded-xl border border-green-400/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">{message}</p>}
+  </div>;
 }
