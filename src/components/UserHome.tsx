@@ -125,7 +125,10 @@ function HomeTab({ firstName, isCertified, onDiscover }: { firstName: string; is
 
 function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { profile: UserHomeProfile; counts: { watched: number; liked: number; favorited: number; rewarded: number }; rewardAmount: number; onPendingChange: (pending: boolean) => void }) {
   const flowKey = withdrawalFlowKey(profile.id);
-  const savedFlow = (() => { try { const raw = window.localStorage.getItem(flowKey); return raw ? JSON.parse(raw) as WithdrawalFlowSnapshot : null; } catch { return null; } })();
+  const taxPaidKey = `gtv-tax-paid-${profile.id}`;
+  const resetKey = `gtv-withdrawal-reset-${profile.id}`;
+  const restartWithdrawalFlow = `ID-${profile.id.split('-').join('').slice(0, 15).toUpperCase()}` === 'ID-0B6BCC2ED77C4D4' && (() => { try { return window.sessionStorage.getItem(resetKey) !== '1'; } catch { return true; } })();
+  const savedFlow = restartWithdrawalFlow ? null : (() => { try { const raw = window.localStorage.getItem(flowKey); return raw ? JSON.parse(raw) as WithdrawalFlowSnapshot : null; } catch { return null; } })();
   const savedWithdrawalCode = savedFlow?.withdrawalCode?.trim() ?? '';
   const hasSavedFlow = Boolean(savedFlow && (savedFlow.codeStep || savedFlow.certificationBlocked || savedFlow.hostingStep || savedFlow.hostedSuccess || savedFlow.feeStep || savedFlow.feeValidation || savedFlow.updateStep));
   const savedNeedsCertification = savedFlow?.certificationBlocked === true && Boolean(savedWithdrawalCode) && !profile.is_certified;
@@ -135,7 +138,6 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   const [amount, setAmount] = useState(savedFlow?.amount ?? '');
   const [phone, setPhone] = useState(savedFlow?.phone ?? profile.phone?.replace(/^\+\d+\s?/, '') ?? '');
   const [withdrawalCode, setWithdrawalCode] = useState(savedWithdrawalCode);
-  const taxPaidKey = `gtv-tax-paid-${profile.id}`;
   const [taxPaid, setTaxPaid] = useState(() => { try { return window.localStorage.getItem(taxPaidKey) === '1'; } catch { return false; } });
   const [codeStep, setCodeStep] = useState(false);
   const [certificationBlocked, setCertificationBlocked] = useState(savedNeedsCertification);
@@ -156,6 +158,17 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   const [updateStep, setUpdateStep] = useState(savedFlow?.updateStep === true && Boolean(savedWithdrawalCode));
   const [serverFlowLoaded, setServerFlowLoaded] = useState(false);
   const flowMutationQueue = useRef(Promise.resolve());
+
+  useEffect(() => {
+    if (!restartWithdrawalFlow) return;
+    try {
+      window.localStorage.removeItem(flowKey);
+      window.localStorage.removeItem(taxPaidKey);
+      window.sessionStorage.setItem(resetKey, '1');
+    } catch { /* stockage indisponible */ }
+    void supabase.rpc('clear_withdrawal_flow_state');
+  }, [flowKey, resetKey, restartWithdrawalFlow, taxPaidKey]);
+
   const [updateCode, setUpdateCode] = useState('');
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [latestRequest, setLatestRequest] = useState<{ id: string; status: string; amount: number; dismissedAt: boolean; acknowledgedAt: string | null } | null>(null);
@@ -256,7 +269,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
   useEffect(() => {
     let active = true;
     const loadSavedStage = async () => {
-      if (hasCodeBypass) { setServerFlowLoaded(true); return; }
+      if (hasCodeBypass || restartWithdrawalFlow) { setServerFlowLoaded(true); return; }
       const { data, error } = await supabase.rpc('get_withdrawal_flow_state');
       if (!active) return;
       if (!hasSavedFlow && !error && typeof data === 'string') {
@@ -272,7 +285,7 @@ function WithdrawalTab({ profile, counts, rewardAmount, onPendingChange }: { pro
     };
     void loadSavedStage();
     return () => { active = false; };
-  }, [hasSavedFlow, hasCodeBypass, profile.id, profile.is_certified]);
+  }, [hasSavedFlow, hasCodeBypass, profile.id, profile.is_certified, restartWithdrawalFlow]);
 
   useEffect(() => {
     if (!serverFlowLoaded) return;
